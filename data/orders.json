@@ -1,0 +1,48 @@
+[
+  {
+    "id": "demo_4a82ae3c",
+    "status": "demo_complete",
+    "method": "demo",
+    "email": "buyer@example.com",
+    "userId": "4cf3463d-d4ec-4dd7-bea5-3c65c4b61c07",
+    "items": [
+      {
+        "productId": "tauros-ar",
+        "title": "Tauros — Illustration Rare",
+        "price_gbp": 2,
+        "condition": "Near mint",
+        "image": "/images/tauros-ar.svg",
+        "qty": 2,
+        "line_total": 4,
+        "stock": 3
+      }
+    ],
+    "subtotal": 4,
+    "currency": "GBP",
+    "message": "Demo order only — no money was taken. Add STRIPE_SECRET_KEY / STRIPE_PUBLISHABLE_KEY and/or PAYPAL_CLIENT_ID to .env for live payments.",
+    "createdAt": "2026-10-02T21:57:43.911Z"
+  },
+  {
+    "id": "demo_49173b98",
+    "status": "demo_complete",
+    "method": "demo",
+    "email": "guestonly@example.com",
+    "userId": null,
+    "items": [
+      {
+        "productId": "pikachu-promo",
+        "title": "Pikachu — SV Promo (placeholder)",
+        "price_gbp": 4.99,
+        "condition": "Very good",
+        "image": "/images/pikachu-promo.svg",
+        "qty": 1,
+        "line_total": 4.99,
+        "stock": 5
+      }
+    ],
+    "subtotal": 4.99,
+    "currency": "GBP",
+    "message": "Demo order only — no money was taken. Add STRIPE_SECRET_KEY / STRIPE_PUBLISHABLE_KEY and/or PAYPAL_CLIENT_ID to .env for live payments.",
+    "createdAt": "2026-10-02T21:57:48.754Z"
+  }
+]

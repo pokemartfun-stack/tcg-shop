@@ -1,0 +1,62 @@
+[
+  {
+    "id": "tauros-ar",
+    "title": "Tauros — Illustration Rare",
+    "description": "Scarlet & Violet era illustration rare. Near mint. Placeholder listing — no official artwork used.",
+    "price_gbp": 2.00,
+    "condition": "Near mint",
+    "category": "Trading cards",
+    "image": "/images/tauros-ar.svg",
+    "stock": 3
+  },
+  {
+    "id": "varoom-ar",
+    "title": "Varoom — Illustration Rare",
+    "description": "Obsidian Flames illustration rare. Near mint with possible slight edge wear — see photos on request.",
+    "price_gbp": 3.50,
+    "condition": "Near mint",
+    "category": "Trading cards",
+    "image": "/images/varoom-ar.svg",
+    "stock": 2
+  },
+  {
+    "id": "revavroom-sar",
+    "title": "Revavroom ex — Special Illustration Rare",
+    "description": "Obsidian Flames SAR. Near mint. Bundle discount available on multi-buys.",
+    "price_gbp": 10.00,
+    "condition": "Near mint",
+    "category": "Trading cards",
+    "image": "/images/revavroom-sar.svg",
+    "stock": 1
+  },
+  {
+    "id": "pikachu-promo",
+    "title": "Pikachu — SV Promo (placeholder)",
+    "description": "Example promo listing. Generic placeholder card art only.",
+    "price_gbp": 4.99,
+    "condition": "Very good",
+    "category": "Trading cards",
+    "image": "/images/pikachu-promo.svg",
+    "stock": 5
+  },
+  {
+    "id": "charizard-ex",
+    "title": "Charizard ex — Double Rare (placeholder)",
+    "description": "Example chase single. Generic coloured placeholder — replace with your own photos.",
+    "price_gbp": 18.00,
+    "condition": "Near mint",
+    "category": "Trading cards",
+    "image": "/images/charizard-ex.svg",
+    "stock": 1
+  },
+  {
+    "id": "lot-bulk-commons",
+    "title": "Bulk commons lot (50 cards)",
+    "description": "Mixed-set commons/uncommons lot. Good for binders and crafts. Category: Trading card lots.",
+    "price_gbp": 6.50,
+    "condition": "Good",
+    "category": "Trading card lots",
+    "image": "/images/lot-bulk-commons.svg",
+    "stock": 4
+  }
+]

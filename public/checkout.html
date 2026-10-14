@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Checkout — Po-ke Mart Fun</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="/">
+        <span class="brand-mark">PM</span>
+        <span>Po-ke Mart Fun</span>
+      </a>
+      <nav class="nav">
+        <a href="/">Shop</a>
+        <a href="/cart.html">Cart <span class="badge" data-cart-count hidden>0</span></a>
+        <span data-auth-guest>
+          <button type="button" class="linkish" data-open-auth="login">Log in</button>
+        </span>
+        <span data-auth-user hidden>
+          <span class="hint">Hi, <strong data-user-name></strong></span>
+          <button type="button" class="linkish" data-logout>Log out</button>
+        </span>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <h1>Checkout</h1>
+      <p>Pay with PayPal, bank card, or Apple Pay. Or complete a demo order if payment keys are not set.</p>
+      <div id="mode-banner" class="banner" hidden></div>
+    </section>
+
+    <div class="checkout-grid">
+      <div class="panel">
+        <h2 style="margin-top:0">Contact</h2>
+        <p class="hint" id="guest-hint">Checking out as a guest. <button type="button" class="linkish" data-open-auth="login" style="display:inline;padding:0">Log in</button> if you have an account.</p>
+        <div class="form-row">
+          <label for="email">Email (for receipt)</label>
+          <input id="email" type="email" autocomplete="email" placeholder="you@example.com" />
+        </div>
+        <h2>Order summary</h2>
+        <div id="summary-lines"></div>
+        <p class="subtotal" style="margin-top:1rem">Total: <span id="checkout-total">£0.00</span></p>
+        <p><a href="/cart.html">← Edit cart</a></p>
+      </div>
+
+      <div class="panel">
+        <h2 style="margin-top:0">Payment</h2>
+        <div class="pay-methods">
+          <div class="pay-card" id="stripe-card">
+            <h3>Bank card / Apple Pay</h3>
+            <p class="hint">Powered by Stripe Checkout. Apple Pay needs HTTPS and domain verification in Stripe.</p>
+            <button type="button" class="btn block" id="btn-stripe">Pay with card / Apple Pay</button>
+          </div>
+          <div class="pay-card" id="paypal-card">
+            <h3>PayPal</h3>
+            <p class="hint">PayPal button appears when <code>PAYPAL_CLIENT_ID</code> is set; otherwise use demo below.</p>
+            <div id="paypal-button-container"></div>
+            <button type="button" class="btn secondary block" id="btn-paypal-demo" hidden>Demo PayPal checkout</button>
+          </div>
+          <div class="pay-card" id="demo-card">
+            <h3>Demo checkout</h3>
+            <p class="hint">No live keys configured — completes a fake order and clears the cart.</p>
+            <button type="button" class="btn ghost block" id="btn-demo">Complete demo order</button>
+          </div>
+        </div>
+        <p class="error" id="checkout-error"></p>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">Payments: Stripe (card + Apple Pay) · PayPal · Demo mode</div>
+  </footer>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/app.js"></script>
+  <script src="/js/checkout.js"></script>
+</body>
+</html>

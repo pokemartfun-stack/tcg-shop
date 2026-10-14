@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Order complete — Po-ke Mart Fun</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="/">
+        <span class="brand-mark">PM</span>
+        <span>Po-ke Mart Fun</span>
+      </a>
+      <nav class="nav">
+        <a href="/">Shop</a>
+        <a href="/cart.html">Cart <span class="badge" data-cart-count hidden>0</span></a>
+      </nav>
+    </div>
+  </header>
+  <main class="container">
+    <div class="panel success-box">
+      <h1>Thank you</h1>
+      <p id="success-msg">Your order is recorded.</p>
+      <p class="hint" id="success-detail"></p>
+      <p><a class="btn" href="/">Back to shop</a></p>
+    </div>
+  </main>
+  <script src="/js/api.js"></script>
+  <script src="/js/app.js"></script>
+  <script>
+    (async () => {
+      const params = new URLSearchParams(location.search);
+      const demo = params.get('demo');
+      const sessionId = params.get('session_id');
+      const msg = document.getElementById('success-msg');
+      const detail = document.getElementById('success-detail');
+      if (demo) {
+        msg.textContent = 'Demo order complete — no payment was taken.';
+        detail.textContent = decodeURIComponent(params.get('order') || '');
+        return;
+      }
+      if (sessionId) {
+        try {
+          const s = await window.TCG.api('/api/checkout/stripe/session/' + encodeURIComponent(sessionId));
+          msg.textContent = s.status === 'paid' ? 'Payment received via Stripe.' : 'Stripe session: ' + s.status;
+          if (s.amount_total != null) {
+            detail.textContent = window.TCG.formatGbp(s.amount_total / 100) + ' ' + String(s.currency || 'gbp').toUpperCase();
+          }
+        } catch (e) {
+          msg.textContent = 'Could not verify Stripe session.';
+          detail.textContent = e.message;
+        }
+      }
+    })();
+  </script>
+</body>
+</html>

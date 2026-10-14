@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="560" viewBox="0 0 400 560">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2a9d8f"/>
+      <stop offset="100%" stop-color="#1a1a2e"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="560" rx="16" fill="url(#g)"/>
+  <rect x="24" y="24" width="352" height="400" rx="8" fill="rgba(255,255,255,0.12)"/>
+  <circle cx="200" cy="200" r="70" fill="rgba(255,255,255,0.2)"/>
+  <text x="200" y="210" text-anchor="middle" font-family="system-ui,sans-serif" font-size="48" fill="white" font-weight="700">TCG</text>
+  <text x="200" y="460" text-anchor="middle" font-family="system-ui,sans-serif" font-size="22" fill="white" font-weight="600">Bulk Commons Lot</text>
+  <text x="200" y="492" text-anchor="middle" font-family="system-ui,sans-serif" font-size="14" fill="rgba(255,255,255,0.75)">Mixed sets</text>
+  <text x="200" y="530" text-anchor="middle" font-family="system-ui,sans-serif" font-size="11" fill="rgba(255,255,255,0.5)">PLACEHOLDER · NO OFFICIAL ART</text>
+</svg>
