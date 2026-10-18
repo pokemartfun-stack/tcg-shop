@@ -28,12 +28,52 @@
     </div>
   </header>
 
+  <section class="hero-banner" id="hero-banner" aria-label="Shop banner">
+    <div class="hero-pattern" aria-hidden="true"></div>
+    <div class="container hero-content">
+      <h1 id="hero-name">Po-ke Mart Fun</h1>
+      <p id="hero-tagline">Pokémon TCG singles &amp; lots — fair prices, fast UK postage.</p>
+    </div>
+  </section>
+
   <main class="container">
     <section class="hero">
-      <h1>Pokemon TCG singles &amp; lots</h1>
       <p>Browse cards, add to cart, and checkout with PayPal, bank card, or Apple Pay. Guest checkout welcome — account optional.</p>
       <div id="mode-banner" class="banner" hidden></div>
     </section>
+
+    <section class="filters" aria-label="Filter cards">
+      <div class="filters-row">
+        <input type="search" id="f-search" placeholder="Search cards…" aria-label="Search by name" />
+        <button type="button" class="btn secondary filters-toggle" id="f-toggle" aria-expanded="false" aria-controls="f-more">Filters</button>
+      </div>
+      <div class="filters-more" id="f-more">
+        <label>Category
+          <select id="f-category">
+            <option value="">All</option>
+            <option>Trading cards</option>
+            <option>Trading card lots</option>
+          </select>
+        </label>
+        <label>Condition
+          <select id="f-condition"><option value="">All</option></select>
+        </label>
+        <label>Min £<input type="number" id="f-min" min="0" step="0.01" inputmode="decimal" /></label>
+        <label>Max £<input type="number" id="f-max" min="0" step="0.01" inputmode="decimal" /></label>
+        <label>Sort
+          <select id="f-sort">
+            <option value="newest">Newest</option>
+            <option value="price-asc">Price: low to high</option>
+            <option value="price-desc">Price: high to low</option>
+            <option value="name">Name A–Z</option>
+          </select>
+        </label>
+        <label class="check"><input type="checkbox" id="f-instock" /> In stock only</label>
+        <button type="button" class="btn ghost" id="f-clear">Clear filters</button>
+      </div>
+      <p class="result-count" id="f-count" aria-live="polite"></p>
+    </section>
+
     <section id="product-grid" class="grid" aria-live="polite"></section>
   </main>
 

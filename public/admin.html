@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>Shop admin — Po-ke Mart Fun</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+  <style>
+    .admin { max-width: 1100px; margin: 24px auto; padding: 0 16px; }
+    .admin section { background: #fff1; border: 1px solid #8884; border-radius: 10px; padding: 16px; margin-bottom: 18px; }
+    .admin table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .admin th, .admin td { padding: 6px; border-bottom: 1px solid #8883; text-align: left; vertical-align: middle; }
+    .admin td img { width: 44px; height: 60px; object-fit: cover; border-radius: 4px; }
+    .admin input, .admin select, .admin textarea { padding: 6px; border-radius: 6px; border: 1px solid #8886; font: inherit; }
+    .admin .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+    .admin .grid label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+    .admin .small { width: 80px; }
+    .admin button { cursor: pointer; padding: 6px 12px; border-radius: 6px; border: 0; background: #2563eb; color: #fff; }
+    .admin button.danger { background: #dc2626; }
+    .admin button.ghost { background: #6b7280; }
+    .admin tr.out td { background: rgba(220, 38, 38, 0.12); }
+    .admin tr.out .oos { display: inline-block; background: #dc2626; color: #fff; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 4px; }
+    .admin .stockctl { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+    .admin .stockctl button { padding: 4px 9px; }
+    .admin .tiny { width: 56px; }
+    .admin .banner-preview { height: 90px; border-radius: 8px; margin-top: 8px; background: linear-gradient(120deg,#e53935,#ffb300,#1e88e5) center/cover; display:flex; align-items:center; padding: 0 14px; color:#fff; font-weight:800; text-shadow:0 2px 6px #000a; }
+    .admin .filterbar { margin-bottom: 8px; }
+    @media (max-width: 700px) { .admin table thead { display: none; } .admin table tr { display: grid; grid-template-columns: 50px 1fr; gap: 4px; border-bottom: 1px solid #8884; padding: 6px 0; } .admin table td { border: 0; } .admin table td:first-child { grid-row: span 5; } }
+    #msg { min-height: 1.4em; font-weight: 600; }
+    #msg.err { color: #dc2626; } #msg.ok { color: #16a34a; }
+  </style>
+</head>
+<body>
+  <main class="admin">
+    <h1>Shop admin</h1>
+    <p id="msg"></p>
+
+    <section id="login-box">
+      <h2>Owner log in</h2>
+      <form id="login-form">
+        <input type="password" id="pw" placeholder="Admin password" required autocomplete="current-password" />
+        <button type="submit">Log in</button>
+      </form>
+    </section>
+
+    <div id="panel" hidden>
+      <p><span id="sync"></span> · <a href="/" target="_blank">View shop</a> · <button class="ghost" id="logout">Log out</button></p>
+
+      <section>
+        <h2>Shop banner</h2>
+        <form id="settings-form" class="grid">
+          <label>Shop name<input name="shop_name" maxlength="60" required /></label>
+          <label>Tagline<input name="tagline" maxlength="160" /></label>
+          <label>Banner image URL (optional; blank = coloured pattern)<input name="banner_image" placeholder="https://..." /></label>
+          <div><button type="submit">Save banner</button></div>
+        </form>
+        <div class="banner-preview" id="banner-preview">Po-ke Mart Fun</div>
+      </section>
+
+      <section>
+        <h2>Upload JSON file</h2>
+        <p>An array of cards: <code>id, title, description, price_gbp, condition, category, image, stock</code>.</p>
+        <input type="file" id="json-file" accept=".json,application/json" />
+        <label><input type="radio" name="mode" value="merge" checked /> Merge (add new, update same id, keep others)</label>
+        <label><input type="radio" name="mode" value="replace" /> Replace all cards</label>
+        <button id="upload-btn">Upload</button>
+      </section>
+
+      <section>
+        <h2>Add a card</h2>
+        <form id="add-form" class="grid">
+          <label>ID (e.g. pikachu-151)<input name="id" required pattern="[A-Za-z0-9][A-Za-z0-9_\-]*" /></label>
+          <label>Title<input name="title" required /></label>
+          <label>Price £<input name="price_gbp" type="number" step="0.01" min="0" required /></label>
+          <label>Stock<input name="stock" type="number" step="1" min="0" value="1" required /></label>
+          <label>Condition
+            <select name="condition"><option>Near mint</option><option>Lightly played</option><option>Moderately played</option><option>Heavily played</option><option>Damaged</option></select>
+          </label>
+          <label>Category
+            <select name="category"><option>Trading cards</option><option>Trading card lots</option></select>
+          </label>
+          <label>Image URL (optional)<input name="image" placeholder="https://..." /></label>
+          <label style="grid-column: 1 / -1">Description<textarea name="description" rows="2"></textarea></label>
+          <div><button type="submit">Add card</button></div>
+        </form>
+      </section>
+
+      <section>
+        <h2>Cards (<span id="count">0</span>) · <span id="oos-count"></span></h2>
+        <label class="filterbar"><input type="checkbox" id="only-oos" /> Show out-of-stock only</label>
+        <table>
+          <thead><tr><th></th><th>ID</th><th>Title</th><th>Price £</th><th>Quantity</th><th>Quick restock</th><th></th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </section>
+    </div>
+  </main>
+  <script src="/js/admin.js"></script>
+</body>
+</html>
