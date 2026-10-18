@@ -1,3 +1,4 @@
+(function () {
 const { api, formatGbp } = window.TCG;
 
 async function refreshCartBadge() {
@@ -174,3 +175,4 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 window.TCGApp = { refreshCartBadge, refreshAuthUI, openModal, closeModal };
+})();
