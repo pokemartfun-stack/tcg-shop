@@ -1,3 +1,4 @@
+(function () {
 const { api, formatGbp } = window.TCG;
 
 async function showModeBanner() {
@@ -28,6 +29,15 @@ async function renderCart() {
   empty.hidden = true;
   filled.hidden = false;
   sub.textContent = formatGbp(cart.subtotal);
+  const problems = cart.problems || [];
+  const probFor = (id) => problems.find((x) => x.productId === id);
+  const warn = document.getElementById('cart-stock-warn');
+  const link = document.getElementById('checkout-link');
+  warn.hidden = !problems.length;
+  warn.textContent = problems.length ? 'Please fix quantities before checkout: ' + problems.map((x) => x.error).join('; ') : '';
+  link.classList.toggle('disabled', problems.length > 0);
+  link.setAttribute('aria-disabled', String(problems.length > 0));
+  link.onclick = problems.length ? (e) => e.preventDefault() : null;
   body.innerHTML = cart.items
     .map(
       (line) => `
@@ -37,7 +47,8 @@ async function renderCart() {
           <img src="${line.image}" alt="" />
           <div>
             <strong>${escapeHtml(line.title)}</strong>
-            <div class="meta">${formatGbp(line.price_gbp)} each</div>
+            <div class="meta">${formatGbp(line.price_gbp)} each · ${line.stock < 1 ? 'Out of stock' : line.stock + ' in stock'}</div>
+            ${probFor(line.productId) ? `<div class="stock-warn">${escapeHtml(probFor(line.productId).error)}</div>` : ''}
           </div>
         </div>
       </td>
@@ -86,3 +97,4 @@ document.addEventListener('DOMContentLoaded', async () => {
   await showModeBanner();
   await renderCart();
 });
+})();

@@ -1,3 +1,4 @@
+(function () {
 const { api, formatGbp } = window.TCG;
 
 let config = null;
@@ -70,6 +71,10 @@ async function renderSummary() {
     )
     .join('');
   total.textContent = formatGbp(cart.subtotal);
+  if (cart.problems && cart.problems.length) {
+    document.getElementById('checkout-error').innerHTML =
+      escapeHtml(cart.problems.map((p) => p.error).join('; ')) + ' — <a href="/cart.html">update your cart</a>.';
+  }
   await window.TCGApp.refreshCartBadge();
 }
 
@@ -91,6 +96,7 @@ function wireButtons() {
         encodeURIComponent(order.id + ' · ' + formatGbp(order.subtotal) + ' · ' + order.message);
     } catch (e) {
       err.textContent = e.message;
+      if (e.status === 409) renderSummary();
     }
   });
 
@@ -107,6 +113,7 @@ function wireButtons() {
         encodeURIComponent(order.id + ' · PayPal demo · ' + formatGbp(order.subtotal));
     } catch (e) {
       err.textContent = e.message;
+      if (e.status === 409) renderSummary();
     }
   });
 
@@ -121,6 +128,7 @@ function wireButtons() {
       if (url) location.href = url;
     } catch (e) {
       err.textContent = e.message;
+      if (e.status === 409) renderSummary();
     }
   });
 }
@@ -132,6 +140,17 @@ function loadPayPal(clientId) {
     if (!window.paypal) return;
     window.paypal
       .Buttons({
+        onClick: async (_data, actions) => {
+          // Check stock before the PayPal window opens, so nobody pays for a sold-out card.
+          try {
+            await api('/api/checkout/stock-check');
+            return actions.resolve();
+          } catch (e) {
+            document.getElementById('checkout-error').textContent = e.message;
+            renderSummary();
+            return actions.reject();
+          }
+        },
         createOrder: (_data, actions) => {
           const totalText = document.getElementById('checkout-total').textContent.replace(/[^\d.]/g, '');
           return actions.order.create({
@@ -166,3 +185,4 @@ function escapeHtml(s) {
 }
 
 document.addEventListener('DOMContentLoaded', init);
+})();
