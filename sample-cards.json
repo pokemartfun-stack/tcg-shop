@@ -1,0 +1,22 @@
+[
+  {
+    "id": "pikachu-151-sir",
+    "title": "Pikachu — 151 Special Illustration Rare",
+    "description": "Pulled straight into a sleeve. Near mint.",
+    "price_gbp": 12.5,
+    "condition": "Near mint",
+    "category": "Trading cards",
+    "image": "https://example.com/photos/pikachu-151.jpg",
+    "stock": 1
+  },
+  {
+    "id": "bulk-lot-100",
+    "title": "100 Pokémon cards bulk lot",
+    "description": "Mixed commons and uncommons, no duplicates of more than 4.",
+    "price_gbp": 6,
+    "condition": "Lightly played",
+    "category": "Trading card lots",
+    "image": "/images/lot-bulk-commons.svg",
+    "stock": 5
+  }
+]
