@@ -88,9 +88,9 @@
         <div class="banner-preview" id="banner-preview">Po-ke Mart Fun</div>
         <div class="dropzone" id="banner-drop">
           <strong>Upload banner image</strong>
-          <span class="hint">Drag &amp; drop one image here, or choose a file · JPG, PNG, WebP or HEIC · resized to 2000px wide and saved in your GitHub repo</span>
+          <span class="hint">Drag &amp; drop one image here, or choose a file · JPG, PNG, WebP, HEIC or GIF · resized to 2000px wide and saved in your GitHub repo · animated GIFs stay animated (max 8 MB)</span>
           <div class="pick-row">
-            <label class="btnlike">Choose banner image<input type="file" id="banner-file" accept="image/jpeg,image/png,image/webp,.heic,.heif,.jpg,.jpeg,.png,.webp" /></label>
+            <label class="btnlike">Choose banner image<input type="file" id="banner-file" accept="image/jpeg,image/png,image/webp,image/gif,.heic,.heif,.jpg,.jpeg,.png,.webp,.gif" /></label>
             <button type="button" class="danger" id="banner-remove">Remove banner image</button>
           </div>
         </div>
@@ -99,7 +99,7 @@
 
       <section id="background-section">
         <h2>Page background</h2>
-        <p class="hint">The picture behind the whole shop (shop, cart, checkout). It is lightly dimmed and blurred so cards and prices stay easy to read. Saved as <code>public/images/background.jpg</code> in your GitHub repo, so it moves with the site if you change host.</p>
+        <p class="hint">The picture behind the whole shop (shop, cart, checkout). It is lightly dimmed and blurred so cards and prices stay easy to read. Saved as <code>public/images/background.jpg</code> (or <code>background.gif</code>) in your GitHub repo, so it moves with the site if you change host.</p>
         <div class="bg-preview" id="bg-preview">
           <div class="bg-img" id="bg-preview-img"></div>
           <div class="bg-dim"></div>
@@ -108,9 +108,9 @@
         </div>
         <div class="dropzone" id="bg-drop">
           <strong>Upload page background</strong>
-          <span class="hint">Drag &amp; drop one image here, or choose a file · JPG, PNG, WebP or HEIC · a large landscape image (1920px+ wide) looks sharpest</span>
+          <span class="hint">Drag &amp; drop one image here, or choose a file · JPG, PNG, WebP, HEIC or GIF · a large landscape image (1920px+ wide) looks sharpest · animated GIFs stay animated (max 8 MB)</span>
           <div class="pick-row">
-            <label class="btnlike">Choose background image<input type="file" id="bg-file" accept="image/jpeg,image/png,image/webp,.heic,.heif,.jpg,.jpeg,.png,.webp" /></label>
+            <label class="btnlike">Choose background image<input type="file" id="bg-file" accept="image/jpeg,image/png,image/webp,image/gif,.heic,.heif,.jpg,.jpeg,.png,.webp,.gif" /></label>
             <button type="button" class="ghost" id="bg-restore" hidden>Use saved background again</button>
             <button type="button" class="danger" id="bg-remove">Remove background</button>
           </div>
