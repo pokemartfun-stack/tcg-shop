@@ -27,8 +27,28 @@
     .admin .banner-preview { height: 90px; border-radius: 8px; margin-top: 8px; background: linear-gradient(120deg,#e53935,#ffb300,#1e88e5) center/cover; display:flex; align-items:center; padding: 0 14px; color:#fff; font-weight:800; text-shadow:0 2px 6px #000a; }
     .admin .filterbar { margin-bottom: 8px; }
     @media (max-width: 700px) { .admin table thead { display: none; } .admin table tr { display: grid; grid-template-columns: 50px 1fr; gap: 4px; border-bottom: 1px solid #8884; padding: 6px 0; } .admin table td { border: 0; } .admin table td:first-child { grid-row: span 5; } }
-    #msg { min-height: 1.4em; font-weight: 600; }
-    #msg.err { color: #dc2626; } #msg.ok { color: #16a34a; }
+    #msg { position: sticky; top: 0; z-index: 10; min-height: 0; font-weight: 600; white-space: pre-line; margin: 0 0 12px; border-radius: 8px; }
+    #msg:empty { display: none; }
+    #msg.err { color: #fff; background: #b91c1c; padding: 10px 14px; } #msg.ok { color: #fff; background: #15803d; padding: 10px 14px; }
+    .dropzone { border: 2px dashed #8888; border-radius: 12px; padding: 22px; text-align: center; margin: 10px 0; transition: background .15s, border-color .15s; }
+    .dropzone.over { background: #2563eb22; border-color: #2563eb; }
+    .dropzone strong { display: block; font-size: 1.05rem; margin-bottom: 6px; }
+    .pick-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
+    .pick-row label.btnlike { display: inline-block; cursor: pointer; padding: 6px 12px; border-radius: 6px; background: #374151; color: #fff; }
+    .pick-row input[type=file] { display: none; }
+    .preview { font-size: 13px; margin-top: 8px; max-height: 320px; overflow: auto; }
+    .preview table td, .preview table th { padding: 3px 6px; }
+    .preview .bad { color: #dc2626; } .preview .good { color: #16a34a; }
+    .result { white-space: pre-line; font-size: 13px; margin-top: 10px; padding: 10px; border-radius: 8px; }
+    .result:empty { display: none; }
+    .result.ok { background: #16a34a22; border: 1px solid #16a34a66; }
+    .result.err { background: #dc262622; border: 1px solid #dc262699; color: #fca5a5; }
+    progress { width: 100%; height: 14px; }
+    .thumbs { display: flex; gap: 4px; flex-wrap: wrap; }
+    .thumbs .t { position: relative; }
+    .thumbs .t img { width: 40px; height: 54px; object-fit: cover; border-radius: 4px; }
+    .thumbs .t button { position: absolute; top: -6px; right: -6px; padding: 0 5px; font-size: 11px; border-radius: 999px; background: #dc2626; line-height: 16px; }
+    .admin .rowphotos input[type=file] { display: none; }
   </style>
 </head>
 <body>
@@ -58,13 +78,46 @@
         <div class="banner-preview" id="banner-preview">Po-ke Mart Fun</div>
       </section>
 
-      <section>
-        <h2>Upload JSON file</h2>
-        <p>An array of cards: <code>id, title, description, price_gbp, condition, category, image, stock</code>.</p>
-        <input type="file" id="json-file" accept=".json,application/json" />
-        <label><input type="radio" name="mode" value="merge" checked /> Merge (add new, update same id, keep others)</label>
-        <label><input type="radio" name="mode" value="replace" /> Replace all cards</label>
+      <section id="import-section">
+        <h2>Upload JSON file + photos</h2>
+        <p>Use the <code>vinted_listings.json</code> from the Vinted Listing Tool, or a shop file (<code>id, title, price_gbp, condition, category, image, stock</code>). Photos are matched to cards by file name.</p>
+        <p><label>1. JSON file: <input type="file" id="json-file" accept=".json,application/json" /></label></p>
+        <div>2. Photos (optional — select your <code>Export\images</code> folder or drop all photos at once):</div>
+        <div class="dropzone" id="import-drop">
+          <strong>Drag &amp; drop photos or a folder here</strong>
+          <span class="hint">JPG, PNG, WebP or HEIC · other files are ignored</span>
+          <div class="pick-row">
+            <label class="btnlike">Choose photos<input type="file" id="import-photos" multiple accept="image/jpeg,image/png,image/webp,.heic,.heif,.jpg,.jpeg,.png,.webp" /></label>
+            <label class="btnlike">Choose whole folder<input type="file" id="import-folder" webkitdirectory directory multiple /></label>
+            <button type="button" class="ghost" id="import-clear-photos">Clear photos</button>
+          </div>
+        </div>
+        <div class="preview" id="import-preview"></div>
+        <p>
+          <label><input type="radio" name="mode" value="merge" checked /> Merge (add new, update same id, keep others)</label>
+          <label><input type="radio" name="mode" value="replace" /> Replace all cards</label>
+        </p>
         <button id="upload-btn">Upload</button>
+        <div id="import-progress" hidden><progress id="import-bar" value="0" max="1"></progress> <span id="import-status"></span></div>
+        <div class="result" id="import-result"></div>
+      </section>
+
+      <section id="bulk-section">
+        <h2>Bulk photos for existing cards</h2>
+        <p>Already imported the cards? Add all their photos here — matched to cards by file name (from the JSON <code>photos</code>) or by card ID (e.g. <code>pikachu-151.jpg</code>).</p>
+        <div class="dropzone" id="bulk-drop">
+          <strong>Drag &amp; drop photos or a folder here</strong>
+          <span class="hint">JPG, PNG, WebP or HEIC · other files are ignored</span>
+          <div class="pick-row">
+            <label class="btnlike">Choose photos<input type="file" id="bulk-photos" multiple accept="image/jpeg,image/png,image/webp,.heic,.heif,.jpg,.jpeg,.png,.webp" /></label>
+            <label class="btnlike">Choose whole folder<input type="file" id="bulk-folder" webkitdirectory directory multiple /></label>
+            <button type="button" class="ghost" id="bulk-clear-photos">Clear photos</button>
+          </div>
+        </div>
+        <div class="preview" id="bulk-preview"></div>
+        <button id="bulk-btn">Upload photos</button>
+        <div id="bulk-progress" hidden><progress id="bulk-bar" value="0" max="1"></progress> <span id="bulk-status"></span></div>
+        <div class="result" id="bulk-result"></div>
       </section>
 
       <section>
@@ -81,6 +134,7 @@
             <select name="category"><option>Trading cards</option><option>Trading card lots</option></select>
           </label>
           <label>Image URL (optional)<input name="image" placeholder="https://..." /></label>
+          <label>Photos (optional, several allowed)<input name="photos" type="file" multiple accept="image/jpeg,image/png,image/webp,.heic,.heif,.jpg,.jpeg,.png,.webp" /></label>
           <label style="grid-column: 1 / -1">Description<textarea name="description" rows="2"></textarea></label>
           <div><button type="submit">Add card</button></div>
         </form>
@@ -90,7 +144,7 @@
         <h2>Cards (<span id="count">0</span>) · <span id="oos-count"></span></h2>
         <label class="filterbar"><input type="checkbox" id="only-oos" /> Show out-of-stock only</label>
         <table>
-          <thead><tr><th></th><th>ID</th><th>Title</th><th>Price £</th><th>Quantity</th><th>Quick restock</th><th></th></tr></thead>
+          <thead><tr><th>Photos</th><th>ID</th><th>Title</th><th>Price £</th><th>Quantity</th><th>Quick restock</th><th></th></tr></thead>
           <tbody id="rows"></tbody>
         </table>
       </section>
