@@ -124,6 +124,35 @@ router.post('/settings/banner', (req, res, next) => multipart([{ name: 'banner',
   }
 });
 
+// Page background upload (multipart field "background"): public/images/background.jpg + repo.
+router.post('/settings/background', (req, res, next) => multipart([{ name: 'background', maxCount: 1 }])(req, res, next), async (req, res) => {
+  try {
+    const f = req.files && req.files.background && req.files.background[0];
+    if (!f) return res.status(400).json({ error: 'Choose a background image (JPG, PNG, WebP or HEIC)' });
+    const saved = await images.saveBackground(fs.readFileSync(f.path), f.originalname);
+    const r = await settings.update({ background_image: saved.url });
+    if (r.error) return res.status(400).json({ error: r.error });
+    const githubError = saved.githubError || r.githubError;
+    res.json({ settings: r.settings, bytes: saved.bytes, github: Boolean(saved.github && r.github), ...(githubError ? { githubError } : {}) });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  } finally {
+    cleanupFiles(req);
+  }
+});
+
+// Remove page background: plain dark page (the file stays in the repo, so it can be restored).
+router.delete('/settings/background', async (_req, res) => {
+  const r = await settings.update({ background_image: '' });
+  res.json(r);
+});
+
+// Restore the saved page background (public/images/background.jpg) after a remove.
+router.post('/settings/background/restore', async (_req, res) => {
+  const r = await settings.update({ background_image: `/images/background.jpg?v=${Date.now()}` });
+  res.json(r);
+});
+
 // Remove banner image: back to the coloured pattern (the file stays in the repo for history).
 router.delete('/settings/banner', async (_req, res) => {
   const r = await settings.update({ banner_image: '' });

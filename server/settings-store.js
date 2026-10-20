@@ -1,5 +1,5 @@
 'use strict';
-// Shop settings (hero banner image + tagline): data/settings.json, synced to GitHub like products.
+// Shop settings (hero banner image, page background, tagline): data/settings.json, synced to GitHub like products.
 const fs = require('fs');
 const path = require('path');
 const sync = require('./github-sync');
@@ -10,6 +10,8 @@ const DEFAULTS = {
   shop_name: 'Po-ke Mart Fun',
   tagline: 'Pokémon TCG singles & lots — fair prices, fast UK postage.',
   banner_image: '',
+  // '' = plain dark page; default is the repo copy of public/images/background.jpg
+  background_image: '/images/background.jpg',
 };
 
 function filePath() {
@@ -43,6 +45,12 @@ function validate(input) {
     if (v && !/^(https?:\/\/|\/)/i.test(v)) return { error: 'Banner image must be an https:// URL or /path (or blank)' };
     if (/["'()\\\s]/.test(v)) return { error: 'Banner image URL contains invalid characters' };
     out.banner_image = v;
+  }
+  if (input.background_image !== undefined) {
+    const v = String(input.background_image).trim();
+    if (v && !/^(https?:\/\/|\/)/i.test(v)) return { error: 'Background image must be an https:// URL or /path (or blank)' };
+    if (/["'()\\\s]/.test(v)) return { error: 'Background image URL contains invalid characters' };
+    out.background_image = v;
   }
   return { settings: out };
 }

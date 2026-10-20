@@ -103,47 +103,69 @@ async function serveFromGitHub(req, res, next) {
   }
 }
 
-// ---------- Shop banner: public/images/banner.jpg (local + repo) ----------
-const BANNER_REPO_PATH = 'public/images/banner.jpg';
+// ---------- Site images: banner + page background (local file + repo copy) ----------
+// Each lives at public/images/<name>.jpg locally AND in the GitHub repo, so the web design
+// is portable to another host. Admin uploads are committed with [skip render], so after a
+// Render restart the deployed copy can be older than the repo: with a token we therefore
+// prefer the repo copy once per process, then serve the local cache.
+function siteImage(name, envVar, label, resize, quality) {
+  const repoPath = `public/images/${name}.jpg`;
+  const localFile = () => process.env[envVar] || path.join(__dirname, '..', 'public', 'images', `${name}.jpg`);
+  let fresh = false;
 
-function bannerFile() {
-  return process.env.BANNER_FILE || path.join(__dirname, '..', 'public', 'images', 'banner.jpg');
-}
-
-/** Resize to max 2000px wide, ~82% JPEG, save locally and commit to the repo. */
-async function saveBanner(buffer, originalName) {
-  const jpeg = await toJpeg(buffer, originalName, {
-    resize: { width: 2000, withoutEnlargement: true },
-    quality: 82,
-  });
-  fs.mkdirSync(path.dirname(bannerFile()), { recursive: true });
-  fs.writeFileSync(bannerFile(), jpeg);
-  const pushed = await sync.safePush(BANNER_REPO_PATH, jpeg, 'Admin: shop banner image', true);
-  return { url: `/images/banner.jpg?v=${Date.now()}`, bytes: jpeg.length, ...pushed };
-}
-
-/** GET /images/banner.jpg — local file, else fetch from GitHub and cache (survives restarts). */
-async function serveBanner(_req, res, next) {
-  const file = bannerFile();
-  const send = (buf) => {
-    res.setHeader('Content-Type', 'image/jpeg');
-    res.setHeader('Cache-Control', 'public, max-age=86400'); // URL carries ?v=<timestamp>
-    res.end(buf);
-  };
-  try {
-    if (fs.existsSync(file)) return send(fs.readFileSync(file));
-    const buf = await sync.fetchFile(BANNER_REPO_PATH);
-    if (!buf) return next();
-    try {
-      fs.mkdirSync(path.dirname(file), { recursive: true });
-      fs.writeFileSync(file, buf);
-    } catch { /* cache best-effort */ }
-    send(buf);
-  } catch (err) {
-    console.error('Banner fallback failed:', err.message);
-    next();
+  async function save(buffer, originalName) {
+    const jpeg = await toJpeg(buffer, originalName, { resize, quality });
+    fs.mkdirSync(path.dirname(localFile()), { recursive: true });
+    fs.writeFileSync(localFile(), jpeg);
+    fresh = true;
+    const pushed = await sync.safePush(repoPath, jpeg, `Admin: ${label}`, true);
+    return { url: `/images/${name}.jpg?v=${Date.now()}`, bytes: jpeg.length, ...pushed };
   }
+
+  async function serve(_req, res, next) {
+    const file = localFile();
+    const send = (buf) => {
+      res.setHeader('Content-Type', 'image/jpeg');
+      res.setHeader('Cache-Control', 'public, max-age=86400'); // URL carries ?v=<timestamp>
+      res.end(buf);
+    };
+    const cache = (buf) => {
+      try { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, buf); } catch { /* best-effort */ }
+    };
+    try {
+      if (!fresh && sync.ghConfig()) {
+        try {
+          const buf = await sync.fetchFile(repoPath);
+          fresh = true;
+          if (buf) { cache(buf); return send(buf); }
+        } catch (err) { console.error(`${label} refresh from GitHub failed:`, err.message); }
+      }
+      if (fs.existsSync(file)) return send(fs.readFileSync(file));
+      const buf = await sync.fetchFile(repoPath);
+      if (!buf) return next();
+      cache(buf);
+      send(buf);
+    } catch (err) {
+      console.error(`${label} fallback failed:`, err.message);
+      next();
+    }
+  }
+
+  return { save, serve, file: localFile, repoPath };
 }
+
+const banner = siteImage('banner', 'BANNER_FILE', 'shop banner image',
+  { width: 2000, withoutEnlargement: true }, 82);
+// Page background: whole image kept (no crop), max 2400px side; CSS scales it to cover.
+const background = siteImage('background', 'BACKGROUND_FILE', 'page background image',
+  { width: 2400, height: 2400, fit: 'inside', withoutEnlargement: true }, 86);
+
+const saveBanner = banner.save;
+const serveBanner = banner.serve;
+const bannerFile = banner.file;
+const saveBackground = background.save;
+const serveBackground = background.serve;
+const backgroundFile = background.file;
 
 function slugFull(s, max) {
   return String(s || '').toLowerCase().replace(/\.[a-z0-9]+$/, '')
@@ -155,4 +177,4 @@ function photoBase(id, photoStem) {
   return `${slugFull(id, 48)}-${slugFull(photoStem, 40)}`;
 }
 
-module.exports = { photoBase, slugFull, saveBanner, serveBanner, bannerFile, slugPart, savePhoto, toJpeg, baseName, stem, serveFromGitHub, uploadsDir, ALLOWED_EXT };
+module.exports = { photoBase, slugFull, saveBanner, serveBanner, bannerFile, saveBackground, serveBackground, backgroundFile, slugPart, savePhoto, toJpeg, baseName, stem, serveFromGitHub, uploadsDir, ALLOWED_EXT };
