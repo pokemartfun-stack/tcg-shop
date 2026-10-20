@@ -187,7 +187,63 @@
     f.tagline.value = st.tagline || '';
     f.banner_image.value = st.banner_image || '';
     previewBanner();
+    previewBackground(st.background_image || '');
   }
+
+  // ---- Page background (stored as /images/background.jpg in the repo) ----
+  function previewBackground(url) {
+    const ok = /^(https?:\/\/|\/)[^"'()\s\\]*$/i.test(url || '');
+    $('#bg-preview-img').style.backgroundImage = ok ? `url("${encodeURI(url)}")` : '';
+    $('#bg-preview-img').hidden = !ok;
+    $('#bg-preview-tile').hidden = !ok;
+    $('#bg-preview-none').hidden = ok;
+    $('#bg-restore').hidden = ok;
+    $('#bg-remove').hidden = !ok;
+  }
+  function bgResult(text, ok) {
+    const el = $('#bg-result');
+    el.textContent = text || '';
+    el.className = 'result ' + (ok ? 'ok' : 'err');
+  }
+  async function uploadBackground(file) {
+    if (!file) return;
+    if (!/\.(jpe?g|png|webp|heic|heif)$/i.test(file.name)) return bgResult(`${file.name}: please use a JPG, PNG, WebP or HEIC image`);
+    if (!/\.hei[cf]$/i.test(file.name)) { // instant local preview (browsers can't show HEIC)
+      previewBackground('/');
+      $('#bg-preview-img').style.backgroundImage = `url("${URL.createObjectURL(file)}")`;
+    }
+    bgResult('Uploading background…', true);
+    const fd = new FormData();
+    fd.append('background', file, file.name);
+    try {
+      const d = await api('POST', '/settings/background', fd);
+      previewBackground(d.settings.background_image);
+      bgResult(`Background saved (${Math.round(d.bytes / 1024)} KB)` + syncNote(d) + ' — live on the shop now.', !d.githubError);
+    } catch (err) {
+      bgResult('Background upload failed: ' + err.message);
+      loadSettings().catch(() => {});
+    }
+  }
+  $('#bg-file').addEventListener('change', (e) => { uploadBackground(e.target.files[0]); e.target.value = ''; });
+  const bgdrop = $('#bg-drop');
+  ['dragenter', 'dragover'].forEach((ev) => bgdrop.addEventListener(ev, (e) => { e.preventDefault(); bgdrop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach((ev) => bgdrop.addEventListener(ev, (e) => { e.preventDefault(); bgdrop.classList.remove('over'); }));
+  bgdrop.addEventListener('drop', (e) => uploadBackground([...(e.dataTransfer.files || [])].find((f) => /\.(jpe?g|png|webp|heic|heif)$/i.test(f.name)) || e.dataTransfer.files[0]));
+  $('#bg-remove').addEventListener('click', async () => {
+    if (!confirm('Remove the page background and go back to the plain dark page? (The image stays saved, so you can turn it back on.)')) return;
+    try {
+      const d = await api('DELETE', '/settings/background');
+      previewBackground('');
+      bgResult('Background removed' + syncNote(d), true);
+    } catch (err) { bgResult(err.message); }
+  });
+  $('#bg-restore').addEventListener('click', async () => {
+    try {
+      const d = await api('POST', '/settings/background/restore');
+      previewBackground(d.settings.background_image);
+      bgResult('Background turned back on' + syncNote(d), true);
+    } catch (err) { bgResult(err.message); }
+  });
 
   $('#settings-form').addEventListener('input', previewBanner);
 
