@@ -166,6 +166,50 @@
   }
 
   $('#settings-form').addEventListener('input', previewBanner);
+
+  // ---- Banner image upload (stored as /images/banner.jpg in the repo) ----
+  function bannerResult(text, ok) {
+    const el = $('#banner-result');
+    el.textContent = text || '';
+    el.className = 'result ' + (ok ? 'ok' : 'err');
+  }
+
+  async function uploadBanner(file) {
+    if (!file) return;
+    if (!/\.(jpe?g|png|webp|heic|heif)$/i.test(file.name)) return bannerResult(`${file.name}: please use a JPG, PNG, WebP or HEIC image`);
+    // instant local preview (browsers can't show HEIC; the server preview follows)
+    if (!/\.hei[cf]$/i.test(file.name)) {
+      const local = URL.createObjectURL(file);
+      $('#banner-preview').style.backgroundImage = `linear-gradient(90deg,#000a,#0003),url("${local}")`;
+    }
+    bannerResult('Uploading banner…', true);
+    const fd = new FormData();
+    fd.append('banner', file, file.name);
+    try {
+      const d = await api('POST', '/settings/banner', fd);
+      $('#settings-form').banner_image.value = d.settings.banner_image;
+      previewBanner();
+      bannerResult(`Banner saved (${Math.round(d.bytes / 1024)} KB)` + syncNote(d) + ' — live on the shop now.', !d.githubError);
+    } catch (err) {
+      bannerResult('Banner upload failed: ' + err.message);
+      previewBanner();
+    }
+  }
+
+  $('#banner-file').addEventListener('change', (e) => { uploadBanner(e.target.files[0]); e.target.value = ''; });
+  const bdrop = $('#banner-drop');
+  ['dragenter', 'dragover'].forEach((ev) => bdrop.addEventListener(ev, (e) => { e.preventDefault(); bdrop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach((ev) => bdrop.addEventListener(ev, (e) => { e.preventDefault(); bdrop.classList.remove('over'); }));
+  bdrop.addEventListener('drop', (e) => uploadBanner([...(e.dataTransfer.files || [])].find((f) => /\.(jpe?g|png|webp|heic|heif)$/i.test(f.name)) || e.dataTransfer.files[0]));
+  $('#banner-remove').addEventListener('click', async () => {
+    if (!confirm('Remove the banner image and go back to the coloured pattern?')) return;
+    try {
+      const d = await api('DELETE', '/settings/banner');
+      $('#settings-form').banner_image.value = '';
+      previewBanner();
+      bannerResult('Banner image removed' + syncNote(d), true);
+    } catch (err) { bannerResult(err.message); }
+  });
   $('#settings-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const body = Object.fromEntries(new FormData(e.target).entries());
