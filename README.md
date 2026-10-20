@@ -168,6 +168,10 @@ In `/admin → Shop banner`, use **Upload banner image** (pick a file or drag an
 
 After a restart, if `public/images/banner.jpg` is missing from the server's disk, it's fetched from the repo and cached again. Once the banner is committed, every later deploy includes it automatically. With `GITHUB_TOKEN` set, the first request after a restart always takes the repo copy, so a banner uploaded since the last deploy is never replaced by the older deployed file.
 
+### Animated GIF banners and backgrounds
+
+The banner and page background uploads also accept **GIF** files, which are kept as GIF so animations keep playing. They're never flattened to JPEG. A GIF is saved as `public/images/banner.gif` (or `background.gif`) and committed to the repo the same way as the JPG. The setting then points at `/images/banner.gif?v=<timestamp>`, and uploading a JPG, PNG, WebP or HEIC later switches it back to `banner.jpg`. GIFs up to 2000 px wide (2400 px for the background) are stored exactly as uploaded. Wider ones are resized with every frame and its timing kept. GIFs over 8 MB are rejected, before resizing and after it. Restart handling (refreshing from the repo) works for both `.jpg` and `.gif`.
+
 ### Page background
 
 The image behind every customer page (shop, cart, checkout, success) is `public/images/background.jpg`, committed in the repo, so the design moves with the code to any host. It's drawn on a fixed layer at `background-size: cover`, with a 1 px blur and a light dark-gradient overlay (30% → 60%), so card tiles, text and prices stay readable. You can tune it with the `--page-bg-blur` and `--page-bg-overlay` CSS variables in `public/css/styles.css`.
