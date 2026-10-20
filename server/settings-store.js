@@ -12,6 +12,8 @@ const DEFAULTS = {
   banner_image: '',
   // '' = plain dark page; default is the repo copy of public/images/background.jpg
   background_image: '/images/background.jpg',
+  // last uploaded background file (jpg or gif), used by "Use saved background again"
+  background_last: '/images/background.jpg',
 };
 
 function filePath() {
@@ -51,6 +53,11 @@ function validate(input) {
     if (v && !/^(https?:\/\/|\/)/i.test(v)) return { error: 'Background image must be an https:// URL or /path (or blank)' };
     if (/["'()\\\s]/.test(v)) return { error: 'Background image URL contains invalid characters' };
     out.background_image = v;
+  }
+  if (input.background_last !== undefined) {
+    const v = String(input.background_last).trim();
+    if (!/^\/images\/background\.(jpg|gif)$/.test(v)) return { error: 'background_last must be /images/background.jpg or .gif' };
+    out.background_last = v;
   }
   return { settings: out };
 }

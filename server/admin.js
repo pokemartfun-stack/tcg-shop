@@ -107,16 +107,17 @@ router.post('/products/:id/stock', async (req, res) => {
 
 router.get('/settings', (_req, res) => res.json(settings.get()));
 
-// Banner image upload (multipart field "banner"): stored at public/images/banner.jpg + repo.
+// Banner image upload (multipart field "banner"): public/images/banner.jpg, or banner.gif for GIFs
+// (kept animated), saved locally + committed to the repo.
 router.post('/settings/banner', (req, res, next) => multipart([{ name: 'banner', maxCount: 1 }])(req, res, next), async (req, res) => {
   try {
     const f = req.files && req.files.banner && req.files.banner[0];
-    if (!f) return res.status(400).json({ error: 'Choose a banner image (JPG, PNG, WebP or HEIC)' });
+    if (!f) return res.status(400).json({ error: 'Choose a banner image (JPG, PNG, WebP, HEIC or GIF)' });
     const saved = await images.saveBanner(fs.readFileSync(f.path), f.originalname);
     const r = await settings.update({ banner_image: saved.url });
     if (r.error) return res.status(400).json({ error: r.error });
     const githubError = saved.githubError || r.githubError;
-    res.json({ settings: r.settings, bytes: saved.bytes, github: Boolean(saved.github && r.github), ...(githubError ? { githubError } : {}) });
+    res.json({ settings: r.settings, bytes: saved.bytes, format: saved.ext, ...(saved.frames ? { frames: saved.frames, animated: saved.animated } : {}), github: Boolean(saved.github && r.github), ...(githubError ? { githubError } : {}) });
   } catch (err) {
     res.status(400).json({ error: err.message });
   } finally {
@@ -124,16 +125,16 @@ router.post('/settings/banner', (req, res, next) => multipart([{ name: 'banner',
   }
 });
 
-// Page background upload (multipart field "background"): public/images/background.jpg + repo.
+// Page background upload (multipart field "background"): public/images/background.jpg (or .gif) + repo.
 router.post('/settings/background', (req, res, next) => multipart([{ name: 'background', maxCount: 1 }])(req, res, next), async (req, res) => {
   try {
     const f = req.files && req.files.background && req.files.background[0];
-    if (!f) return res.status(400).json({ error: 'Choose a background image (JPG, PNG, WebP or HEIC)' });
+    if (!f) return res.status(400).json({ error: 'Choose a background image (JPG, PNG, WebP, HEIC or GIF)' });
     const saved = await images.saveBackground(fs.readFileSync(f.path), f.originalname);
-    const r = await settings.update({ background_image: saved.url });
+    const r = await settings.update({ background_image: saved.url, background_last: saved.path });
     if (r.error) return res.status(400).json({ error: r.error });
     const githubError = saved.githubError || r.githubError;
-    res.json({ settings: r.settings, bytes: saved.bytes, github: Boolean(saved.github && r.github), ...(githubError ? { githubError } : {}) });
+    res.json({ settings: r.settings, bytes: saved.bytes, format: saved.ext, ...(saved.frames ? { frames: saved.frames, animated: saved.animated } : {}), github: Boolean(saved.github && r.github), ...(githubError ? { githubError } : {}) });
   } catch (err) {
     res.status(400).json({ error: err.message });
   } finally {
@@ -147,9 +148,10 @@ router.delete('/settings/background', async (_req, res) => {
   res.json(r);
 });
 
-// Restore the saved page background (public/images/background.jpg) after a remove.
+// Restore the last saved page background (background.jpg or background.gif) after a remove.
 router.post('/settings/background/restore', async (_req, res) => {
-  const r = await settings.update({ background_image: `/images/background.jpg?v=${Date.now()}` });
+  const last = settings.get().background_last || '/images/background.jpg';
+  const r = await settings.update({ background_image: `${last}?v=${Date.now()}` });
   res.json(r);
 });
 
