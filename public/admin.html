@@ -25,6 +25,11 @@
     .admin .stockctl button { padding: 4px 9px; }
     .admin .tiny { width: 56px; }
     .admin .banner-preview { height: 90px; border-radius: 8px; margin-top: 8px; background: linear-gradient(120deg,#e53935,#ffb300,#1e88e5) center/cover; display:flex; align-items:center; padding: 0 14px; color:#fff; font-weight:800; text-shadow:0 2px 6px #000a; }
+    .admin .bg-preview { height: 220px; max-width: 520px; border-radius: 8px; margin-top: 8px; position: relative; overflow: hidden; background: #0f1117; border: 1px solid #8884; display: flex; align-items: flex-end; }
+    .admin .bg-preview .bg-img { position: absolute; inset: -8px; background: center 35% / cover no-repeat; filter: blur(1px); }
+    .admin .bg-preview .bg-dim { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10,12,18,.30), rgba(10,12,18,.60)); }
+    .admin .bg-preview .bg-tile { position: relative; margin: 14px; padding: 8px 12px; border-radius: 8px; background: rgba(26,29,39,.94); border: 1px solid #2e3345; color: #fff; font-size: 13px; }
+    .admin .bg-preview .bg-none { position: relative; margin: auto; color: #9aa3b5; font-size: 13px; }
     .admin .filterbar { margin-bottom: 8px; }
     @media (max-width: 700px) { .admin table thead { display: none; } .admin table tr { display: grid; grid-template-columns: 50px 1fr; gap: 4px; border-bottom: 1px solid #8884; padding: 6px 0; } .admin table td { border: 0; } .admin table td:first-child { grid-row: span 5; } }
     #msg { position: sticky; top: 0; z-index: 10; min-height: 0; font-weight: 600; white-space: pre-line; margin: 0 0 12px; border-radius: 8px; }
@@ -90,6 +95,27 @@
           </div>
         </div>
         <div class="result" id="banner-result"></div>
+      </section>
+
+      <section id="background-section">
+        <h2>Page background</h2>
+        <p class="hint">The picture behind the whole shop (shop, cart, checkout). It is lightly dimmed and blurred so cards and prices stay easy to read. Saved as <code>public/images/background.jpg</code> in your GitHub repo, so it moves with the site if you change host.</p>
+        <div class="bg-preview" id="bg-preview">
+          <div class="bg-img" id="bg-preview-img"></div>
+          <div class="bg-dim"></div>
+          <div class="bg-tile" id="bg-preview-tile">Card tile · <strong>£12.50</strong></div>
+          <div class="bg-none" id="bg-preview-none" hidden>No background image — plain dark page</div>
+        </div>
+        <div class="dropzone" id="bg-drop">
+          <strong>Upload page background</strong>
+          <span class="hint">Drag &amp; drop one image here, or choose a file · JPG, PNG, WebP or HEIC · a large landscape image (1920px+ wide) looks sharpest</span>
+          <div class="pick-row">
+            <label class="btnlike">Choose background image<input type="file" id="bg-file" accept="image/jpeg,image/png,image/webp,.heic,.heif,.jpg,.jpeg,.png,.webp" /></label>
+            <button type="button" class="ghost" id="bg-restore" hidden>Use saved background again</button>
+            <button type="button" class="danger" id="bg-remove">Remove background</button>
+          </div>
+        </div>
+        <div class="result" id="bg-result"></div>
       </section>
 
       <section id="import-section">
