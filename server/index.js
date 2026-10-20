@@ -100,6 +100,8 @@ app.use(express.json({ limit: '5mb' }));
 app.use(parseCookies);
 app.use('/api/admin', admin.router);
 app.get('/admin', (_req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'admin.html')));
+// Banner: local file, else fetched from the GitHub repo after a restart.
+app.get('/images/banner.jpg', (req, res, next) => require('./images').serveBanner(req, res, next));
 app.use(express.static(path.join(__dirname, '..', 'public')));
 // Uploaded photos: local disk (UPLOADS_DIR or public/uploads), then GitHub fallback after a restart.
 const images = require('./images');

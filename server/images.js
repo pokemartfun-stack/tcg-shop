@@ -33,7 +33,7 @@ function slugPart(s) {
     .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 50) || 'photo';
 }
 
-async function toJpeg(buffer, originalName) {
+async function toJpeg(buffer, originalName, opts = {}) {
   if (!sharp) throw new Error('Image processing (sharp) is not installed on the server');
   const ext = path.extname(String(originalName || '')).toLowerCase();
   if (ext && !ALLOWED_EXT.has(ext)) {
@@ -52,8 +52,8 @@ async function toJpeg(buffer, originalName) {
   try {
     return await sharp(input, { failOn: 'error' })
       .rotate() // respect EXIF orientation from phones
-      .resize({ width: MAX_SIDE, height: MAX_SIDE, fit: 'inside', withoutEnlargement: true })
-      .jpeg({ quality: QUALITY, mozjpeg: true })
+      .resize(opts.resize || { width: MAX_SIDE, height: MAX_SIDE, fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: opts.quality || QUALITY, mozjpeg: true })
       .toBuffer();
   } catch (err) {
     throw new Error(`${originalName}: not a readable image (${err.message})`);
@@ -102,4 +102,46 @@ async function serveFromGitHub(req, res, next) {
   }
 }
 
-module.exports = { slugPart, savePhoto, toJpeg, baseName, stem, serveFromGitHub, uploadsDir, ALLOWED_EXT };
+// ---------- Shop banner: public/images/banner.jpg (local + repo) ----------
+const BANNER_REPO_PATH = 'public/images/banner.jpg';
+
+function bannerFile() {
+  return process.env.BANNER_FILE || path.join(__dirname, '..', 'public', 'images', 'banner.jpg');
+}
+
+/** Resize to max 2000px wide, ~82% JPEG, save locally and commit to the repo. */
+async function saveBanner(buffer, originalName) {
+  const jpeg = await toJpeg(buffer, originalName, {
+    resize: { width: 2000, withoutEnlargement: true },
+    quality: 82,
+  });
+  fs.mkdirSync(path.dirname(bannerFile()), { recursive: true });
+  fs.writeFileSync(bannerFile(), jpeg);
+  const pushed = await sync.safePush(BANNER_REPO_PATH, jpeg, 'Admin: shop banner image', true);
+  return { url: `/images/banner.jpg?v=${Date.now()}`, bytes: jpeg.length, ...pushed };
+}
+
+/** GET /images/banner.jpg — local file, else fetch from GitHub and cache (survives restarts). */
+async function serveBanner(_req, res, next) {
+  const file = bannerFile();
+  const send = (buf) => {
+    res.setHeader('Content-Type', 'image/jpeg');
+    res.setHeader('Cache-Control', 'public, max-age=86400'); // URL carries ?v=<timestamp>
+    res.end(buf);
+  };
+  try {
+    if (fs.existsSync(file)) return send(fs.readFileSync(file));
+    const buf = await sync.fetchFile(BANNER_REPO_PATH);
+    if (!buf) return next();
+    try {
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(file, buf);
+    } catch { /* cache best-effort */ }
+    send(buf);
+  } catch (err) {
+    console.error('Banner fallback failed:', err.message);
+    next();
+  }
+}
+
+module.exports = { saveBanner, serveBanner, bannerFile, slugPart, savePhoto, toJpeg, baseName, stem, serveFromGitHub, uploadsDir, ALLOWED_EXT };

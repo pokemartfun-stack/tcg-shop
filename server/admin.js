@@ -106,6 +106,29 @@ router.post('/products/:id/stock', async (req, res) => {
 
 router.get('/settings', (_req, res) => res.json(settings.get()));
 
+// Banner image upload (multipart field "banner"): stored at public/images/banner.jpg + repo.
+router.post('/settings/banner', (req, res, next) => multipart([{ name: 'banner', maxCount: 1 }])(req, res, next), async (req, res) => {
+  try {
+    const f = req.files && req.files.banner && req.files.banner[0];
+    if (!f) return res.status(400).json({ error: 'Choose a banner image (JPG, PNG, WebP or HEIC)' });
+    const saved = await images.saveBanner(fs.readFileSync(f.path), f.originalname);
+    const r = await settings.update({ banner_image: saved.url });
+    if (r.error) return res.status(400).json({ error: r.error });
+    const githubError = saved.githubError || r.githubError;
+    res.json({ settings: r.settings, bytes: saved.bytes, github: Boolean(saved.github && r.github), ...(githubError ? { githubError } : {}) });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  } finally {
+    cleanupFiles(req);
+  }
+});
+
+// Remove banner image: back to the coloured pattern (the file stays in the repo for history).
+router.delete('/settings/banner', async (_req, res) => {
+  const r = await settings.update({ banner_image: '' });
+  res.json(r);
+});
+
 router.put('/settings', async (req, res) => {
   const r = await settings.update(req.body || {});
   if (r.error) return res.status(400).json({ error: r.error });
