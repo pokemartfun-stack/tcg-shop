@@ -166,14 +166,20 @@ On the shop, cards with several photos show a 📷 count. Click a photo to open 
 
 In `/admin → Shop banner`, use **Upload banner image** (pick a file or drag and drop one; JPG, PNG, WebP or HEIC). The image is resized to a maximum of 2000 px wide, saved as about 82% JPEG at `public/images/banner.jpg`, and, with `GITHUB_TOKEN` set, committed to the repo at the same path with `[skip render]`. The setting `banner_image` becomes `/images/banner.jpg?v=<timestamp>`, so browsers pick up the new image straight away. **Remove banner image** switches back to the coloured pattern. The file stays in the repo, so it can be restored later. The URL field still works if you'd rather link to an external image.
 
-After a restart, if `public/images/banner.jpg` is missing from the server's disk, it's fetched from the repo and cached again. Once the banner is committed, every later deploy includes it automatically.
+After a restart, if `public/images/banner.jpg` is missing from the server's disk, it's fetched from the repo and cached again. Once the banner is committed, every later deploy includes it automatically. With `GITHUB_TOKEN` set, the first request after a restart always takes the repo copy, so a banner uploaded since the last deploy is never replaced by the older deployed file.
+
+### Page background
+
+The image behind every customer page (shop, cart, checkout, success) is `public/images/background.jpg`, committed in the repo, so the design moves with the code to any host. It's drawn on a fixed layer at `background-size: cover`, with a 1 px blur and a light dark-gradient overlay (30% → 60%), so card tiles, text and prices stay readable. You can tune it with the `--page-bg-blur` and `--page-bg-overlay` CSS variables in `public/css/styles.css`.
+
+In `/admin → Page background`, **Upload page background** (JPG, PNG, WebP or HEIC) keeps the whole image, uncropped, resizes it to a maximum of 2400 px on the longest side, and saves it at `public/images/background.jpg`. With `GITHUB_TOKEN` set, it's committed to the same path with `[skip render]`. The setting `background_image` in `data/settings.json` becomes `/images/background.jpg?v=<timestamp>`. **Remove background** sets it to blank, which gives a plain dark page. **Use saved background again** turns the image back on. Restarts are handled the same way as the banner.
 
 ## Portability
 
 Everything that makes up the shop lives in the GitHub repo:
 
 - **Code**: `server/`, `package.json`
-- **Design**: `public/` (HTML, CSS, JS) and the banner at `public/images/banner.jpg`
+- **Design**: `public/` (HTML, CSS, JS) the banner at `public/images/banner.jpg` and the page background at `public/images/background.jpg`
 - **Card data and settings**: `data/products.json`, `data/settings.json`
 - **Card photos**: `public/uploads/`
 
