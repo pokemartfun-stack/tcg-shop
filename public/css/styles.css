@@ -369,3 +369,43 @@ a:hover { color: var(--accent-hover); }
   .gallery-main { height: 70vh; }
   .gallery-nav { width: 2.3rem; height: 2.3rem; font-size: 1.2rem; }
 }
+
+/* ======================================================================
+   Page background image (admin "Page background", /images/background.jpg)
+   Fixed layer behind everything: cover-scaled, lightly blurred (the source
+   art is low-res) and darkened so tiles, text and prices stay readable.
+   Uses a fixed pseudo-element instead of background-attachment: fixed,
+   which iOS Safari ignores.
+   ====================================================================== */
+:root {
+  /* "Light" variant (owner's pick): more of the artwork shows through */
+  --page-bg-blur: 1px;
+  --page-bg-overlay:
+    linear-gradient(180deg, rgba(10, 12, 18, 0.30) 0%, rgba(10, 12, 18, 0.48) 45%, rgba(10, 12, 18, 0.60) 100%);
+}
+html.has-page-bg body { background: var(--bg); }
+html.has-page-bg body::before,
+html.has-page-bg body::after {
+  content: ""; position: fixed; inset: 0; pointer-events: none;
+}
+html.has-page-bg body::before {
+  z-index: -2;
+  inset: calc(var(--page-bg-blur) * -4); /* hide blurred edges */
+  background: var(--page-bg-image) center 35% / cover no-repeat;
+  filter: blur(var(--page-bg-blur)) saturate(1.1);
+}
+html.has-page-bg body::after { z-index: -1; background: var(--page-bg-overlay); }
+/* Panels / tiles get a touch of glass so the art shows through at the edges only */
+html.has-page-bg .filters,
+html.has-page-bg .panel { background: rgba(26, 29, 39, 0.88); backdrop-filter: blur(6px); }
+html.has-page-bg .card { background: rgba(26, 29, 39, 0.94); }
+html.has-page-bg .result-count,
+html.has-page-bg .empty,
+html.has-page-bg .site-footer { color: #c3cad8; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8); }
+html.has-page-bg .hero p { color: #dfe4ee; text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9); }
+html.has-page-bg .banner { background-color: rgba(38, 33, 18, 0.92); }
+html.has-page-bg .banner.ok { background-color: rgba(16, 40, 31, 0.92); }
+html.has-page-bg .site-footer { border-top-color: rgba(255, 255, 255, 0.12); }
+@media (max-width: 640px) {
+  html.has-page-bg body::before { background-position: center 30%; }
+}
