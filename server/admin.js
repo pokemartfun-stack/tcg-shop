@@ -8,6 +8,7 @@ const os = require('os');
 const multer = require('multer');
 const images = require('./images');
 const importer = require('./importer');
+const photoOrder = require('./photo-order');
 
 const TOKENS = new Map(); // token -> expiry
 const TTL = 12 * 60 * 60 * 1000;
@@ -183,38 +184,30 @@ function readJsonUpload(req) {
 }
 
 /**
- * Process uploaded files and attach them to a product (mutates a copy, returns it).
- * - each photo is stored as /uploads/<id>-<photo name>-<hash>.jpg
- * - re-uploading a photo with the same name replaces the old version
- * - images are ordered like photo_files (the Vinted export order), first = main photo
+ * Convert + store uploaded files for one card. Does NOT touch the product list
+ * (so slow image work never overwrites changes made meanwhile).
+ * Each photo is stored as /uploads/<id>-<photo name>-<hash>.jpg.
+ * @returns {{ saved: Array<{stem, url, name}>, errors: string[] }}
  */
-async function attachPhotos(product, files, cache, { replaceAll = false } = {}) {
+async function processPhotos(id, files, cache) {
+  const saved = [];
   const errors = [];
-  const added = [];
   for (const f of files) {
     try {
-      const key = `${product.id}|${f.path}`;
-      let saved = cache && cache.get(key);
-      if (!saved) {
-        saved = await images.savePhoto(fs.readFileSync(f.path), f.originalname, `${product.id}-${images.stem(f.originalname)}`);
-        if (cache) cache.set(key, saved);
+      const st = images.stem(f.originalname);
+      const key = `${id}|${f.path}`;
+      let r = cache && cache.get(key);
+      if (!r) {
+        r = await images.savePhoto(fs.readFileSync(f.path), f.originalname, '=' + images.photoBase(id, st));
+        if (cache) cache.set(key, r);
       }
-      added.push({ url: saved.url, prefix: `/uploads/${images.slugPart(`${product.id}-${images.stem(f.originalname)}`)}-` });
-      if (saved.githubError) errors.push(`${f.originalname}: saved, but GitHub copy failed (${saved.githubError})`);
+      saved.push({ stem: st, url: r.url, name: f.originalname });
+      if (r.githubError) errors.push(`${f.originalname}: saved, but GitHub copy failed (${r.githubError})`);
     } catch (err) {
       errors.push(err.message);
     }
   }
-  let current = replaceAll ? [] : (product.images || [product.image] || []);
-  current = current.filter((u) => u && u !== store.PLACEHOLDER_IMAGE && !added.some((a) => u.startsWith(a.prefix) && u !== a.url));
-  let all = [...new Set([...current, ...added.map((a) => a.url)])];
-  const order = (product.photo_files || []).map((st) => `/uploads/${images.slugPart(`${product.id}-${st}`)}-`);
-  if (order.length) {
-    const rank = (u) => { const i = order.findIndex((pre) => u.startsWith(pre)); return i < 0 ? order.length : i; };
-    all = all.map((u, i) => ({ u, i })).sort((a, b) => rank(a.u) - rank(b.u) || a.i - b.i).map((x) => x.u);
-  }
-  if (!all.length) all = [store.PLACEHOLDER_IMAGE];
-  return { product: { ...product, images: all.slice(0, 20), image: all[0] }, saved: added.length, errors };
+  return { saved, errors };
 }
 
 /** Find the card a photo belongs to: by photo_files name, else photo name == card id. */
@@ -265,15 +258,23 @@ router.post('/upload', multipart([{ name: 'file', maxCount: 1 }, { name: 'photos
         if (f) { matched.push(f); used.add(f); } else missing.push(images.baseName(ref));
       }
       p.photo_files = it.localRefs.map((ref) => images.stem(ref));
+      let finalP = p;
       if (matched.length) {
-        const r = await attachPhotos({ ...p, images: p.images.length ? p.images : [] }, matched, cache, { replaceAll: true });
-        photosSaved += r.saved;
-        p.images = [...new Set([...r.product.images.filter((u) => u !== store.PLACEHOLDER_IMAGE), ...p.images])];
+        // photos came with the JSON: they replace any old uploads / svg placeholders
+        const r = await processPhotos(p.id, matched, cache);
+        photosSaved += r.saved.length;
+        finalP = photoOrder.applyPhotos(p, r.saved, { replaceAll: true });
         r.errors.forEach((e) => warnings.push(`${p.title}: ${e}`));
       }
       if (missing.length && !photosFollow) waiting.push({ title: p.title, missing });
       const prev = existing.get(p.id);
-      if (!p.images.length) p.images = prev && prev.images && prev.images.length ? prev.images : [store.PLACEHOLDER_IMAGE];
+      if (!finalP.images.length || (!matched.length && finalP.images.every((u) => photoOrder.PLACEHOLDER_RE.test(u)) && prev)) {
+        // no photos yet in this upload: keep the card's existing photos (they get re-sorted by the new JSON order)
+        const keep = prev && prev.images && prev.images.length ? prev.images : [store.PLACEHOLDER_IMAGE];
+        finalP = photoOrder.orderImages({ ...finalP, images: [...new Set([...finalP.images.filter((u) => !photoOrder.PLACEHOLDER_RE.test(u)), ...keep])], photo_map: prev && prev.photo_map }).product;
+      }
+      Object.assign(p, finalP);
+      if (!p.images.length) p.images = [store.PLACEHOLDER_IMAGE];
       p.image = p.images[0];
       // keep original date for known cards; new cards keep file order (later in file = newer)
       if (!p.added_at) p.added_at = prev && prev.added_at ? prev.added_at : new Date(now + it.index).toISOString();
@@ -316,16 +317,17 @@ router.post('/upload', multipart([{ name: 'file', maxCount: 1 }, { name: 'photos
 // Per-card photos: multipart "photos" (1..20), mode=append (default) | replace
 router.post('/products/:id/images', multipart([{ name: 'photos', maxCount: 20 }]), async (req, res) => {
   try {
-    const list = store.get();
-    const i = list.findIndex((p) => p.id === req.params.id);
-    if (i < 0) return res.status(404).json({ error: 'Not found' });
+    if (!store.get().some((p) => p.id === req.params.id)) return res.status(404).json({ error: 'Not found' });
     const files = (req.files && req.files.photos) || [];
     if (!files.length) return res.status(400).json({ error: 'Choose at least one photo' });
-    const r = await attachPhotos(list[i], files, null, { replaceAll: req.body && req.body.mode === 'replace' });
-    if (!r.saved) return res.status(400).json({ error: r.errors.join('\n') || 'No photos saved' });
-    const next = list.slice();
-    next[i] = r.product;
-    const sync = await store.save(next, `photos for ${list[i].id}`);
+    const r = await processPhotos(req.params.id, files);
+    if (!r.saved.length) return res.status(400).json({ error: r.errors.join('\n') || 'No photos saved' });
+    // re-read after the (slow) image work so concurrent edits/batches are not lost
+    const next = store.get().slice();
+    const i = next.findIndex((p) => p.id === req.params.id);
+    if (i < 0) return res.status(404).json({ error: 'Card was removed meanwhile' });
+    next[i] = photoOrder.applyPhotos(next[i], r.saved, { replaceAll: req.body && req.body.mode === 'replace' });
+    const sync = await store.save(next, `photos for ${next[i].id}`);
     res.json({ product: next[i], warnings: r.errors, ...sync });
   } catch (err) {
     res.status(500).json({ error: `Photo upload failed: ${err.message}` });
@@ -339,21 +341,24 @@ router.post('/photos/bulk', multipart([{ name: 'photos', maxCount: 20 }]), async
   try {
     const files = (req.files && req.files.photos) || [];
     if (!files.length) return res.status(400).json({ error: 'Choose at least one photo' });
-    let list = store.get().slice();
     const results = [];
     const groups = new Map();
     for (const f of files) {
-      const p = matchPhoto(list, f.originalname);
+      const p = matchPhoto(store.get(), f.originalname);
       if (!p) { results.push({ name: f.originalname, card: null, error: 'No card uses this photo name' }); continue; }
       if (!groups.has(p.id)) groups.set(p.id, []);
       groups.get(p.id).push(f);
     }
+    const processed = [];
+    for (const [id, group] of groups) processed.push({ id, group, r: await processPhotos(id, group) });
+    // apply to a fresh copy of the list, then sort each card by its JSON photo order
+    const list = store.get().slice();
     let saved = 0;
-    for (const [id, group] of groups) {
+    for (const { id, group, r } of processed) {
       const i = list.findIndex((p) => p.id === id);
-      const r = await attachPhotos(list[i], group);
-      list[i] = r.product;
-      saved += r.saved;
+      if (i < 0) { group.forEach((f) => results.push({ name: f.originalname, card: null, error: 'Card was removed meanwhile' })); continue; }
+      list[i] = photoOrder.applyPhotos(list[i], r.saved);
+      saved += r.saved.length;
       group.forEach((f) => {
         const err = r.errors.find((e) => e.startsWith(f.originalname));
         results.push({ name: f.originalname, card: id, title: list[i].title, error: err && !/GitHub copy failed/.test(err) ? err : null, warning: err && /GitHub/.test(err) ? err : null });
@@ -366,6 +371,27 @@ router.post('/photos/bulk', multipart([{ name: 'photos', maxCount: 20 }]), async
   } finally {
     cleanupFiles(req);
   }
+});
+
+// One-click repair: sort every card's photos by its stored JSON photo order (no re-upload needed).
+router.post('/photos/fix-order', async (_req, res) => {
+  const list = store.get();
+  let changed = 0;
+  const noNames = [];
+  const unresolved = [];
+  const next = list.map((p) => {
+    const hasUploads = (p.images || [p.image]).some((u) => /^\/uploads\//.test(u || ''));
+    if (!(p.photo_files && p.photo_files.length)) {
+      if (hasUploads) noNames.push(p.title);
+      return p;
+    }
+    const r = photoOrder.orderImages(p);
+    if (r.changed) changed++;
+    if (r.unresolved) unresolved.push(p.title);
+    return r.product;
+  });
+  const sync = changed ? await store.save(next, `fix photo order (${changed} cards)`) : { github: false };
+  res.json({ ok: true, changed, checked: list.length, noPhotoNames: noNames, unresolved, ...sync });
 });
 
 module.exports = { router, _tokens: TOKENS };

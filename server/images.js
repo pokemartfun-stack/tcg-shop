@@ -67,7 +67,8 @@ async function toJpeg(buffer, originalName, opts = {}) {
 async function savePhoto(buffer, originalName, prefix) {
   const jpeg = await toJpeg(buffer, originalName);
   const hash = crypto.createHash('sha1').update(jpeg).digest('hex').slice(0, 10);
-  const file = `${slugPart(prefix || originalName)}-${hash}.jpg`;
+  const base = String(prefix || '').startsWith('=') ? prefix.slice(1) : slugPart(prefix || originalName);
+  const file = `${base}-${hash}.jpg`;
   const dir = uploadsDir();
   fs.mkdirSync(dir, { recursive: true });
   const full = path.join(dir, file);
@@ -144,4 +145,14 @@ async function serveBanner(_req, res, next) {
   }
 }
 
-module.exports = { saveBanner, serveBanner, bannerFile, slugPart, savePhoto, toJpeg, baseName, stem, serveFromGitHub, uploadsDir, ALLOWED_EXT };
+function slugFull(s, max) {
+  return String(s || '').toLowerCase().replace(/\.[a-z0-9]+$/, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, max).replace(/-+$/, '') || 'photo';
+}
+
+/** File name base for a card photo: "<id≤48>-<photo name≤40>" — never truncates the photo name away. */
+function photoBase(id, photoStem) {
+  return `${slugFull(id, 48)}-${slugFull(photoStem, 40)}`;
+}
+
+module.exports = { photoBase, slugFull, saveBanner, serveBanner, bannerFile, slugPart, savePhoto, toJpeg, baseName, stem, serveFromGitHub, uploadsDir, ALLOWED_EXT };

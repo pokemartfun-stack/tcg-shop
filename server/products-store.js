@@ -61,6 +61,15 @@ function normalise(p, idx = 0) {
     const pf = [...new Set(p.photo_files.map((x) => String(x).toLowerCase().trim()).filter((x) => /^[^\\/:*?"<>|]{1,120}$/.test(x)))].slice(0, 30);
     if (pf.length) product.photo_files = pf;
   }
+  if (p.photo_map && typeof p.photo_map === 'object' && !Array.isArray(p.photo_map)) {
+    // photo name -> uploaded file, so photos can always be sorted in JSON order
+    const pm = {};
+    for (const [k, v] of Object.entries(p.photo_map).slice(0, 40)) {
+      const key = String(k).toLowerCase().trim();
+      if (/^[^\\/:*?"<>|]{1,120}$/.test(key) && typeof v === 'string' && isUrl(v)) pm[key] = v;
+    }
+    if (Object.keys(pm).length) product.photo_map = pm;
+  }
   if (p.added_at && !Number.isNaN(Date.parse(p.added_at))) product.added_at = new Date(p.added_at).toISOString();
   return { product };
 }
