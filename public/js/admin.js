@@ -190,7 +190,20 @@
     previewBackground(st.background_image || '');
   }
 
-  // ---- Page background (stored as /images/background.jpg in the repo) ----
+  // ---- Banner / background accept GIF too (kept animated server-side, max 8 MB) ----
+  const SITE_IMG = /\.(jpe?g|png|webp|heic|heif|gif)$/i;
+  const GIF_MAX = 8 * 1024 * 1024;
+  function siteImgProblem(file) {
+    if (!SITE_IMG.test(file.name)) return `${file.name}: please use a JPG, PNG, WebP, HEIC or GIF image`;
+    if (/\.gif$/i.test(file.name) && file.size > GIF_MAX) return `${file.name}: GIF is ${(file.size / 1048576).toFixed(1)} MB — please keep GIFs under 8 MB`;
+    return '';
+  }
+  function gifNote(d) {
+    if (d.format !== 'gif') return '';
+    return d.animated ? ` — animated GIF, ${d.frames} frames kept` : ' — GIF';
+  }
+
+  // ---- Page background (stored as /images/background.jpg or .gif in the repo) ----
   function previewBackground(url) {
     const ok = /^(https?:\/\/|\/)[^"'()\s\\]*$/i.test(url || '');
     $('#bg-preview-img').style.backgroundImage = ok ? `url("${encodeURI(url)}")` : '';
@@ -207,7 +220,8 @@
   }
   async function uploadBackground(file) {
     if (!file) return;
-    if (!/\.(jpe?g|png|webp|heic|heif)$/i.test(file.name)) return bgResult(`${file.name}: please use a JPG, PNG, WebP or HEIC image`);
+    const bgProblem = siteImgProblem(file);
+    if (bgProblem) return bgResult(bgProblem);
     if (!/\.hei[cf]$/i.test(file.name)) { // instant local preview (browsers can't show HEIC)
       previewBackground('/');
       $('#bg-preview-img').style.backgroundImage = `url("${URL.createObjectURL(file)}")`;
@@ -218,7 +232,7 @@
     try {
       const d = await api('POST', '/settings/background', fd);
       previewBackground(d.settings.background_image);
-      bgResult(`Background saved (${Math.round(d.bytes / 1024)} KB)` + syncNote(d) + ' — live on the shop now.', !d.githubError);
+      bgResult(`Background saved (${Math.round(d.bytes / 1024)} KB${gifNote(d)})` + syncNote(d) + ' — live on the shop now.', !d.githubError);
     } catch (err) {
       bgResult('Background upload failed: ' + err.message);
       loadSettings().catch(() => {});
@@ -228,7 +242,7 @@
   const bgdrop = $('#bg-drop');
   ['dragenter', 'dragover'].forEach((ev) => bgdrop.addEventListener(ev, (e) => { e.preventDefault(); bgdrop.classList.add('over'); }));
   ['dragleave', 'drop'].forEach((ev) => bgdrop.addEventListener(ev, (e) => { e.preventDefault(); bgdrop.classList.remove('over'); }));
-  bgdrop.addEventListener('drop', (e) => uploadBackground([...(e.dataTransfer.files || [])].find((f) => /\.(jpe?g|png|webp|heic|heif)$/i.test(f.name)) || e.dataTransfer.files[0]));
+  bgdrop.addEventListener('drop', (e) => uploadBackground([...(e.dataTransfer.files || [])].find((f) => SITE_IMG.test(f.name)) || e.dataTransfer.files[0]));
   $('#bg-remove').addEventListener('click', async () => {
     if (!confirm('Remove the page background and go back to the plain dark page? (The image stays saved, so you can turn it back on.)')) return;
     try {
@@ -247,7 +261,7 @@
 
   $('#settings-form').addEventListener('input', previewBanner);
 
-  // ---- Banner image upload (stored as /images/banner.jpg in the repo) ----
+  // ---- Banner image upload (stored as /images/banner.jpg, or banner.gif for GIFs, in the repo) ----
   function bannerResult(text, ok) {
     const el = $('#banner-result');
     el.textContent = text || '';
@@ -256,7 +270,8 @@
 
   async function uploadBanner(file) {
     if (!file) return;
-    if (!/\.(jpe?g|png|webp|heic|heif)$/i.test(file.name)) return bannerResult(`${file.name}: please use a JPG, PNG, WebP or HEIC image`);
+    const bannerProblem = siteImgProblem(file);
+    if (bannerProblem) return bannerResult(bannerProblem);
     // instant local preview (browsers can't show HEIC; the server preview follows)
     if (!/\.hei[cf]$/i.test(file.name)) {
       const local = URL.createObjectURL(file);
@@ -269,7 +284,7 @@
       const d = await api('POST', '/settings/banner', fd);
       $('#settings-form').banner_image.value = d.settings.banner_image;
       previewBanner();
-      bannerResult(`Banner saved (${Math.round(d.bytes / 1024)} KB)` + syncNote(d) + ' — live on the shop now.', !d.githubError);
+      bannerResult(`Banner saved (${Math.round(d.bytes / 1024)} KB${gifNote(d)})` + syncNote(d) + ' — live on the shop now.', !d.githubError);
     } catch (err) {
       bannerResult('Banner upload failed: ' + err.message);
       previewBanner();
@@ -280,7 +295,7 @@
   const bdrop = $('#banner-drop');
   ['dragenter', 'dragover'].forEach((ev) => bdrop.addEventListener(ev, (e) => { e.preventDefault(); bdrop.classList.add('over'); }));
   ['dragleave', 'drop'].forEach((ev) => bdrop.addEventListener(ev, (e) => { e.preventDefault(); bdrop.classList.remove('over'); }));
-  bdrop.addEventListener('drop', (e) => uploadBanner([...(e.dataTransfer.files || [])].find((f) => /\.(jpe?g|png|webp|heic|heif)$/i.test(f.name)) || e.dataTransfer.files[0]));
+  bdrop.addEventListener('drop', (e) => uploadBanner([...(e.dataTransfer.files || [])].find((f) => SITE_IMG.test(f.name)) || e.dataTransfer.files[0]));
   $('#banner-remove').addEventListener('click', async () => {
     if (!confirm('Remove the banner image and go back to the coloured pattern?')) return;
     try {
