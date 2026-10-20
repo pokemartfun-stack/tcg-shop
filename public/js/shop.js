@@ -47,8 +47,9 @@ function cardHtml(p) {
   const out = p.stock < 1;
   return `
     <article class="card${out ? ' sold-out' : ''}" data-product-id="${escapeHtml(p.id)}">
-      <div class="card-img">
+      <div class="card-img" data-gallery="${escapeHtml(p.id)}" role="button" tabindex="0" aria-label="View photos of ${escapeHtml(p.title)}">
         <img src="${escapeHtml(p.image)}" alt="${escapeHtml(p.title)}" width="400" height="560" loading="lazy" />
+        ${(p.images || []).length > 1 ? `<span class="photo-count">📷 ${p.images.length}</span>` : ''}
         ${out ? '<span class="ribbon">Out of stock</span>' : ''}
       </div>
       <div class="card-body">
@@ -138,6 +139,16 @@ function wire() {
     $('f-toggle').setAttribute('aria-expanded', String(open));
   });
 
+  // Simple gallery: click a card photo to see all its photos.
+  $('product-grid').addEventListener('click', (e) => {
+    const g = e.target.closest('[data-gallery]');
+    if (g) openGallery(g.getAttribute('data-gallery'));
+  });
+  $('product-grid').addEventListener('keydown', (e) => {
+    const g = e.target.closest('[data-gallery]');
+    if (g && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openGallery(g.getAttribute('data-gallery')); }
+  });
+
   // Event delegation: grid is re-rendered on every filter change.
   $('product-grid').addEventListener('click', async (e) => {
     const btn = e.target.closest('[data-add]');
@@ -156,6 +167,41 @@ function wire() {
       await loadProducts(); // refresh stock numbers
     }
   });
+}
+
+function openGallery(id) {
+  const p = ALL.find((x) => x.id === id);
+  if (!p) return;
+  const imgs = p.images && p.images.length ? p.images : [p.image];
+  let box = document.getElementById('gallery');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'gallery';
+    box.className = 'gallery-backdrop';
+    box.innerHTML = `<div class="gallery" role="dialog" aria-modal="true" aria-label="Photos">
+      <button type="button" class="gallery-close" aria-label="Close">×</button>
+      <img class="gallery-main" alt="" />
+      <div class="gallery-title"></div>
+      <div class="gallery-thumbs"></div>
+    </div>`;
+    document.body.appendChild(box);
+    box.addEventListener('click', (e) => {
+      if (e.target === box || e.target.closest('.gallery-close')) box.classList.remove('open');
+      const t = e.target.closest('[data-src]');
+      if (t) {
+        box.querySelector('.gallery-main').src = t.getAttribute('data-src');
+        box.querySelectorAll('[data-src]').forEach((x) => x.classList.toggle('active', x === t));
+      }
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') box.classList.remove('open'); });
+  }
+  box.querySelector('.gallery-main').src = imgs[0];
+  box.querySelector('.gallery-main').alt = p.title;
+  box.querySelector('.gallery-title').textContent = p.title;
+  box.querySelector('.gallery-thumbs').innerHTML = imgs.length > 1
+    ? imgs.map((u, i) => `<button type="button" data-src="${escapeHtml(u)}" class="${i === 0 ? 'active' : ''}"><img src="${escapeHtml(u)}" alt="Photo ${i + 1}" /></button>`).join('')
+    : '';
+  box.classList.add('open');
 }
 
 function escapeHtml(s) {
