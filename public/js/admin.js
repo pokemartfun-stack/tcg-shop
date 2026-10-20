@@ -67,8 +67,9 @@
     $('#rows').innerHTML = rows.map((p) => `
       <tr data-id="${esc(p.id)}" class="${p.stock < 1 ? 'out' : ''}">
         <td class="rowphotos">
-          <div class="thumbs">${(p.images && p.images.length ? p.images : [p.image]).map((u, i) => `
-            <span class="t"><img src="${esc(u)}" alt="" loading="lazy" />${u.startsWith('/images/') && (p.images || []).length <= 1 ? '' : `<button type="button" data-act="rmimg" data-idx="${i}" title="Remove photo">×</button>`}</span>`).join('')}</div>
+          <div class="thumbs">${(() => { const imgs = p.images && p.images.length ? p.images : [p.image]; const n = imgs.length; return imgs.map((u, i) => `
+            <span class="t${i === 0 ? ' cover' : ''}"><img src="${esc(u)}" alt="" loading="lazy" title="${i === 0 ? 'Cover photo' : 'Photo ' + (i + 1)}" />${u.startsWith('/images/') && n <= 1 ? '' : `<button type="button" class="rm" data-act="rmimg" data-idx="${i}" title="Remove photo">×</button>`}
+              ${n > 1 ? `<span class="ord">${i > 0 ? `<button type="button" data-act="mvimg" data-idx="${i}" data-dir="-1" title="Move left">◀</button>` : ''}${i > 0 ? `<button type="button" data-act="cover" data-idx="${i}" title="Set as cover">★</button>` : '<em>cover</em>'}${i < n - 1 ? `<button type="button" data-act="mvimg" data-idx="${i}" data-dir="1" title="Move right">▶</button>` : ''}</span>` : ''}</span>`).join(''); })()}</div>
           <label class="btnlike" style="font-size:12px;cursor:pointer;color:#60a5fa">Upload photo(s)<input type="file" multiple data-act="addimg" accept="image/jpeg,image/png,image/webp,.heic,.heif,.jpg,.jpeg,.png,.webp" /></label>
         </td>
         <td>${esc(p.id)}</td>
@@ -86,6 +87,20 @@
   }
 
   $('#only-oos').addEventListener('change', render);
+
+  $('#fix-order').addEventListener('click', async () => {
+    const btn = $('#fix-order');
+    btn.disabled = true;
+    try {
+      const d = await api('POST', '/photos/fix-order');
+      let t = d.changed ? `Photo order fixed on ${d.changed} card(s) — the first photo from your JSON is now the cover.` : 'All cards already have their photos in JSON order.';
+      if (d.unresolved && d.unresolved.length) t += `\n${d.unresolved.length} card(s) have photos that can't be matched to a photo name (uploaded before this fix): ${d.unresolved.join(', ')}. Re-upload their photos with "Bulk photos for existing cards" (or use ★ Set as cover).`;
+      if (d.noPhotoNames && d.noPhotoNames.length) t += `\n${d.noPhotoNames.length} card(s) have no stored photo names (not from a Vinted JSON): ${d.noPhotoNames.join(', ')} — use ★ Set as cover on those.`;
+      msg(t + syncNote(d), !(d.unresolved && d.unresolved.length));
+      await render();
+    } catch (err) { msg(err.message); }
+    finally { btn.disabled = false; }
+  });
 
   // Per-card "Upload photo(s)"
   $('#rows').addEventListener('change', async (e) => {
@@ -110,7 +125,16 @@
     const act = btn.dataset.act;
     btn.disabled = true;
     try {
-      if (act === 'rmimg') {
+      if (act === 'cover' || act === 'mvimg') {
+        const p = LAST.find((x) => x.id === id);
+        const imgs = (p.images && p.images.length ? p.images : [p.image]).slice();
+        const i = Number(btn.dataset.idx);
+        const j = act === 'cover' ? 0 : i + Number(btn.dataset.dir);
+        const [moved] = imgs.splice(i, 1);
+        imgs.splice(j, 0, moved);
+        const d = await api('PATCH', '/products/' + encodeURIComponent(id), { images: imgs, image: imgs[0] });
+        msg((act === 'cover' ? 'New cover photo for ' : 'Photo order updated for ') + id + syncNote(d), true);
+      } else if (act === 'rmimg') {
         const p = LAST.find((x) => x.id === id);
         const imgs = (p.images || [p.image]).filter((_, i) => i !== Number(btn.dataset.idx));
         const d = await api('PATCH', '/products/' + encodeURIComponent(id), { images: imgs, image: imgs[0] || '' });
@@ -406,7 +430,10 @@
       matched.forEach((s) => used.add(byStem.get(s)));
       return { ...c, matched, missing: c.stems.filter((s) => !byStem.has(s)) };
     });
-    return { rows, photos, matchedFiles: photos.filter((f) => used.has(f)), unmatched: photos.filter((f) => !used.has(f)) };
+    // send photos in JSON order (cover photos first) — the server also re-sorts after every batch
+    const ordered = [];
+    rows.forEach((r) => r.matched.forEach((st) => { const f = byStem.get(st); if (!ordered.includes(f)) ordered.push(f); }));
+    return { rows, photos, matchedFiles: ordered, unmatched: photos.filter((f) => !used.has(f)) };
   }
 
   function renderImportPreview() {

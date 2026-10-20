@@ -169,10 +169,24 @@ function wire() {
   });
 }
 
+let galleryImgs = [];
+let galleryIdx = 0;
+
+function showGalleryPhoto(i) {
+  const box = document.getElementById('gallery');
+  galleryIdx = (i + galleryImgs.length) % galleryImgs.length;
+  box.querySelector('.gallery-main').src = galleryImgs[galleryIdx];
+  box.querySelectorAll('[data-idx]').forEach((x) => x.classList.toggle('active', Number(x.getAttribute('data-idx')) === galleryIdx));
+  const many = galleryImgs.length > 1;
+  box.querySelector('.gallery-nav.prev').hidden = !many;
+  box.querySelector('.gallery-nav.next').hidden = !many;
+  box.querySelector('.gallery-counter').textContent = many ? `${galleryIdx + 1} / ${galleryImgs.length}` : '';
+}
+
 function openGallery(id) {
   const p = ALL.find((x) => x.id === id);
   if (!p) return;
-  const imgs = p.images && p.images.length ? p.images : [p.image];
+  galleryImgs = p.images && p.images.length ? p.images : [p.image];
   let box = document.getElementById('gallery');
   if (!box) {
     box = document.createElement('div');
@@ -180,27 +194,45 @@ function openGallery(id) {
     box.className = 'gallery-backdrop';
     box.innerHTML = `<div class="gallery" role="dialog" aria-modal="true" aria-label="Photos">
       <button type="button" class="gallery-close" aria-label="Close">×</button>
-      <img class="gallery-main" alt="" />
+      <div class="gallery-stage">
+        <button type="button" class="gallery-nav prev" aria-label="Previous photo">‹</button>
+        <img class="gallery-main" alt="" />
+        <button type="button" class="gallery-nav next" aria-label="Next photo">›</button>
+      </div>
       <div class="gallery-title"></div>
+      <div class="gallery-counter"></div>
       <div class="gallery-thumbs"></div>
     </div>`;
     document.body.appendChild(box);
     box.addEventListener('click', (e) => {
-      if (e.target === box || e.target.closest('.gallery-close')) box.classList.remove('open');
-      const t = e.target.closest('[data-src]');
-      if (t) {
-        box.querySelector('.gallery-main').src = t.getAttribute('data-src');
-        box.querySelectorAll('[data-src]').forEach((x) => x.classList.toggle('active', x === t));
-      }
+      if (e.target === box || e.target.closest('.gallery-close')) return box.classList.remove('open');
+      if (e.target.closest('.gallery-nav.prev')) return showGalleryPhoto(galleryIdx - 1);
+      if (e.target.closest('.gallery-nav.next')) return showGalleryPhoto(galleryIdx + 1);
+      const t = e.target.closest('[data-idx]');
+      if (t) showGalleryPhoto(Number(t.getAttribute('data-idx')));
     });
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') box.classList.remove('open'); });
+    document.addEventListener('keydown', (e) => {
+      if (!box.classList.contains('open')) return;
+      if (e.key === 'Escape') box.classList.remove('open');
+      if (e.key === 'ArrowLeft') showGalleryPhoto(galleryIdx - 1);
+      if (e.key === 'ArrowRight') showGalleryPhoto(galleryIdx + 1);
+    });
+    // swipe on phones
+    let x0 = null;
+    box.addEventListener('touchstart', (e) => { x0 = e.touches[0].clientX; }, { passive: true });
+    box.addEventListener('touchend', (e) => {
+      if (x0 == null) return;
+      const dx = e.changedTouches[0].clientX - x0;
+      if (Math.abs(dx) > 40) showGalleryPhoto(galleryIdx + (dx < 0 ? 1 : -1));
+      x0 = null;
+    });
   }
-  box.querySelector('.gallery-main').src = imgs[0];
   box.querySelector('.gallery-main').alt = p.title;
   box.querySelector('.gallery-title').textContent = p.title;
-  box.querySelector('.gallery-thumbs').innerHTML = imgs.length > 1
-    ? imgs.map((u, i) => `<button type="button" data-src="${escapeHtml(u)}" class="${i === 0 ? 'active' : ''}"><img src="${escapeHtml(u)}" alt="Photo ${i + 1}" /></button>`).join('')
+  box.querySelector('.gallery-thumbs').innerHTML = galleryImgs.length > 1
+    ? galleryImgs.map((u, i) => `<button type="button" data-idx="${i}"><img src="${escapeHtml(u)}" alt="Photo ${i + 1}" /></button>`).join('')
     : '';
+  showGalleryPhoto(0);
   box.classList.add('open');
 }
 
