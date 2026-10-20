@@ -72,10 +72,19 @@
         <form id="settings-form" class="grid">
           <label>Shop name<input name="shop_name" maxlength="60" required /></label>
           <label>Tagline<input name="tagline" maxlength="160" /></label>
-          <label>Banner image URL (optional; blank = coloured pattern)<input name="banner_image" placeholder="https://..." /></label>
+          <label>Or banner image URL (optional external link; blank = coloured pattern)<input name="banner_image" placeholder="https://..." /></label>
           <div><button type="submit">Save banner</button></div>
         </form>
         <div class="banner-preview" id="banner-preview">Po-ke Mart Fun</div>
+        <div class="dropzone" id="banner-drop">
+          <strong>Upload banner image</strong>
+          <span class="hint">Drag &amp; drop one image here, or choose a file · JPG, PNG, WebP or HEIC · resized to 2000px wide and saved in your GitHub repo</span>
+          <div class="pick-row">
+            <label class="btnlike">Choose banner image<input type="file" id="banner-file" accept="image/jpeg,image/png,image/webp,.heic,.heif,.jpg,.jpeg,.png,.webp" /></label>
+            <button type="button" class="danger" id="banner-remove">Remove banner image</button>
+          </div>
+        </div>
+        <div class="result" id="banner-result"></div>
       </section>
 
       <section id="import-section">
