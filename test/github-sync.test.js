@@ -12,6 +12,7 @@ process.env.PRODUCTS_FILE = path.join(tmpDir, 'products.json');
 process.env.SETTINGS_FILE = path.join(tmpDir, 'settings.json');
 process.env.UPLOADS_DIR = path.join(tmpDir, 'uploads');
 process.env.BANNER_FILE = path.join(tmpDir, 'banner', 'banner.jpg');
+process.env.BACKGROUND_FILE = path.join(tmpDir, 'bg', 'background.jpg');
 process.env.ADMIN_PASSWORD = 'pw';
 process.env.GITHUB_TOKEN = 'test-token';
 process.env.GITHUB_REPO = 'owner/repo';
@@ -116,5 +117,56 @@ describe('GitHub persistence (mocked)', () => {
     const del = await realFetch(base + '/api/admin/settings/banner', { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
     assert.equal(del.status, 200);
     assert.equal((await (await realFetch(base + '/api/settings')).json()).banner_image, '');
+  });
+
+  it('page background upload: whole image kept, saved locally + committed to public/images/background.jpg, settings updated', async () => {
+    const tall = await sharp({ create: { width: 1000, height: 3000, channels: 3, background: '#fc0' } }).png().toBuffer();
+    const fd = new FormData();
+    fd.append('background', new Blob([tall]), 'pikachu.png');
+    assert.equal((await realFetch(base + '/api/admin/settings/background', { method: 'POST', body: fd })).status, 401);
+    const fd2 = new FormData();
+    fd2.append('background', new Blob([tall]), 'pikachu.png');
+    const res = await realFetch(base + '/api/admin/settings/background', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd2 });
+    const d = await res.json();
+    assert.equal(res.status, 200, JSON.stringify(d));
+    assert.equal(d.github, true);
+    assert.match(d.settings.background_image, /^\/images\/background\.jpg\?v=\d+$/);
+    const c = commits.find((x) => x.file === 'public/images/background.jpg');
+    assert.ok(c, JSON.stringify(commits));
+    assert.match(c.message, /^\[skip render\]/);
+    const meta = await sharp(repo.get('public/images/background.jpg')).metadata();
+    assert.equal(meta.format, 'jpeg');
+    assert.equal(meta.height, 2400, 'longest side capped at 2400');
+    assert.equal(meta.width, 800, 'not cropped: aspect ratio kept');
+    assert.ok(fs.existsSync(process.env.BACKGROUND_FILE));
+    assert.equal(JSON.parse(repo.get('data/settings.json').toString()).background_image, d.settings.background_image);
+    assert.equal((await (await realFetch(base + '/api/settings')).json()).background_image, d.settings.background_image);
+    const img = await realFetch(base + d.settings.background_image);
+    assert.equal(img.status, 200);
+    assert.equal(img.headers.get('content-type'), 'image/jpeg');
+  });
+
+  it('background is fetched from GitHub when missing locally (after a restart), then cached', async () => {
+    fs.rmSync(process.env.BACKGROUND_FILE);
+    const res = await realFetch(base + '/images/background.jpg?v=2');
+    assert.equal(res.status, 200);
+    assert.ok(fs.existsSync(process.env.BACKGROUND_FILE));
+  });
+
+  it('rejects non-images, removes and restores the page background', async () => {
+    const auth = { Authorization: `Bearer ${token}` };
+    const fd = new FormData();
+    fd.append('background', new Blob(['hello']), 'notes.txt');
+    const bad = await realFetch(base + '/api/admin/settings/background', { method: 'POST', headers: auth, body: fd });
+    assert.equal(bad.status, 400);
+    assert.match((await bad.json()).error, /only JPG, PNG, WebP or HEIC/);
+    assert.equal((await realFetch(base + '/api/admin/settings/background', { method: 'DELETE' })).status, 401);
+    const del = await realFetch(base + '/api/admin/settings/background', { method: 'DELETE', headers: auth });
+    assert.equal(del.status, 200);
+    assert.equal((await (await realFetch(base + '/api/settings')).json()).background_image, '');
+    assert.equal(JSON.parse(repo.get('data/settings.json').toString()).background_image, '');
+    const rs = await realFetch(base + '/api/admin/settings/background/restore', { method: 'POST', headers: auth });
+    assert.equal(rs.status, 200);
+    assert.match((await (await realFetch(base + '/api/settings')).json()).background_image, /^\/images\/background\.jpg\?v=\d+$/);
   });
 });

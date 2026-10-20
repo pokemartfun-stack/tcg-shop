@@ -123,4 +123,20 @@ describe('banner settings', () => {
     assert.equal(after.data.banner_image, 'https://example.com/b.jpg');
     assert.equal(JSON.parse(fs.readFileSync(tmpSettings, 'utf8')).tagline, 'New tagline');
   });
+
+  it('page background: default is the repo image, validated, and can be cleared', async () => {
+    assert.equal((await call('GET', '/api/settings')).data.background_image, '/images/background.jpg');
+    assert.equal((await call('PUT', '/api/admin/settings', { background_image: 'javascript:alert(1)' }, { admin: adminToken })).status, 400);
+    assert.equal((await call('PUT', '/api/admin/settings', { background_image: '/x.jpg") ; evil(' }, { admin: adminToken })).status, 400);
+    assert.equal((await call('PUT', '/api/admin/settings', { background_image: '' }, { admin: adminToken })).status, 200);
+    assert.equal((await call('GET', '/api/settings')).data.background_image, '');
+    assert.equal((await call('PUT', '/api/admin/settings', { background_image: '/images/background.jpg' }, { admin: adminToken })).status, 200);
+  });
+
+  it('serves the committed background image file', async () => {
+    const res = await fetch(base + '/images/background.jpg');
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get('content-type'), 'image/jpeg');
+    assert.ok((await res.arrayBuffer()).byteLength > 10000);
+  });
 });
