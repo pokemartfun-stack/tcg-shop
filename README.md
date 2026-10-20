@@ -161,3 +161,28 @@ Problem items (missing title, bad price and so on) are listed one by one and ski
 Photos are converted (HEIC included), resized to a maximum of 1200 px, saved as about 80% JPEG in `public/uploads/`, and, with `GITHUB_TOKEN`, committed to `public/uploads/` in the repo with `[skip render]`. After a restart, any photo missing from disk is fetched from GitHub and cached again. GitHub writes are paced (`GITHUB_WRITE_GAP_MS`, default 900 ms) and retried on rate limits, so a 100-photo upload takes a couple of minutes when GitHub sync is on.
 
 On the shop, cards with several photos show a 📷 count. Click a photo to open a simple gallery.
+
+### Banner image upload
+
+In `/admin → Shop banner`, use **Upload banner image** (pick a file or drag and drop one; JPG, PNG, WebP or HEIC). The image is resized to a maximum of 2000 px wide, saved as about 82% JPEG at `public/images/banner.jpg`, and, with `GITHUB_TOKEN` set, committed to the repo at the same path with `[skip render]`. The setting `banner_image` becomes `/images/banner.jpg?v=<timestamp>`, so browsers pick up the new image straight away. **Remove banner image** switches back to the coloured pattern. The file stays in the repo, so it can be restored later. The URL field still works if you'd rather link to an external image.
+
+After a restart, if `public/images/banner.jpg` is missing from the server's disk, it's fetched from the repo and cached again. Once the banner is committed, every later deploy includes it automatically.
+
+## Portability
+
+Everything that makes up the shop lives in the GitHub repo:
+
+- **Code**: `server/`, `package.json`
+- **Design**: `public/` (HTML, CSS, JS) and the banner at `public/images/banner.jpg`
+- **Card data and settings**: `data/products.json`, `data/settings.json`
+- **Card photos**: `public/uploads/`
+
+Customer accounts and orders (`data/users.json`, `data/orders.json`) are **not** in the repo. They live only on the server and are wiped on Render free-tier restarts.
+
+To move to another Node.js host (Railway, Koyeb, Fly.io, a VPS…):
+
+1. Connect the same GitHub repo. Build command `npm install`, start command `npm start`.
+2. Set the environment variables: `ADMIN_PASSWORD`, `GITHUB_TOKEN` (plus `GITHUB_REPO` / `GITHUB_BRANCH` if they differ), and your payment keys `STRIPE_PUBLISHABLE_KEY`, `STRIPE_SECRET_KEY`, `PAYPAL_CLIENT_ID`. Also set `BASE_URL` to the new address.
+3. Done. Point your domain at the new host.
+
+**WordPress is a different system.** It runs PHP, not Node.js, so it can't run this app directly. Moving to WordPress would mean rebuilding the shop with WooCommerce. The card data (`data/products.json`, which can be converted to a WooCommerce product CSV) and all the images in the repo can be reused.
