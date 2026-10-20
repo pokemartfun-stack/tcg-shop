@@ -291,3 +291,81 @@ a:hover { color: var(--accent-hover); }
   position: absolute; top: -0.4rem; right: -0.2rem; width: 2.2rem; height: 2.2rem; border-radius: 999px;
   border: none; background: #fff; color: #111; font-size: 1.4rem; line-height: 1; cursor: pointer; z-index: 2;
 }
+
+/* ======================================================================
+   Full-width layout + uncropped photos (design round 2)
+   ====================================================================== */
+.container {
+  width: 100%;
+  max-width: 1800px;
+  margin: 0 auto;
+  padding-left: clamp(14px, 2.2vw, 32px);
+  padding-right: clamp(14px, 2.2vw, 32px);
+}
+.container.narrow { max-width: 1200px; }
+
+.grid {
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: clamp(0.75rem, 1.2vw, 1.25rem);
+  align-items: stretch;
+}
+
+/* Photo box: same shape for every card, whole photo visible (never cropped) */
+.card-img {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  background: radial-gradient(circle at 50% 40%, #1f2433 0%, #12151d 100%);
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+  border-bottom: 1px solid var(--border);
+}
+.card .card-img img,
+.card img {
+  width: 100%; height: 100%;
+  aspect-ratio: auto;
+  object-fit: contain;
+  object-position: center;
+  background: transparent;
+  display: block;
+}
+
+.card { transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease; }
+.card:hover { transform: translateY(-4px); box-shadow: 0 14px 32px rgba(0, 0, 0, 0.45); border-color: #4a5372; }
+.card-body { gap: 0.4rem; }
+.card-body h2 {
+  font-size: 1rem; line-height: 1.35;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  min-height: calc(1.35em * 2);
+}
+.card-body .meta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.price { font-size: 1.35rem; font-weight: 800; color: #fff; letter-spacing: -0.01em; }
+.photo-count { backdrop-filter: blur(4px); }
+
+/* Gallery: big, whole photo, arrows + thumbnails */
+.gallery { width: min(1100px, 100%); }
+.gallery-stage { position: relative; width: 100%; display: flex; align-items: center; justify-content: center; }
+.gallery-main {
+  width: 100%; height: min(78vh, 900px);
+  max-height: none; object-fit: contain;
+  background: radial-gradient(circle at 50% 40%, #1f2433 0%, #0b0d12 100%);
+}
+.gallery-nav {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 2.8rem; height: 2.8rem; border-radius: 999px; border: none; cursor: pointer;
+  background: rgba(255, 255, 255, 0.9); color: #111; font-size: 1.5rem; line-height: 1;
+  display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px rgba(0,0,0,.4);
+}
+.gallery-nav.prev { left: 0.5rem; }
+.gallery-nav.next { right: 0.5rem; }
+.gallery-nav[hidden] { display: none; }
+.gallery-counter { color: var(--muted); font-size: 0.85rem; }
+.gallery-thumbs img { object-fit: contain; background: #12151d; }
+
+@media (max-width: 640px) {
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
+  .card-body { padding: 0.6rem 0.65rem 0.75rem; }
+  .card-body h2 { font-size: 0.88rem; }
+  .price { font-size: 1.1rem; }
+  .gallery-main { height: 70vh; }
+  .gallery-nav { width: 2.3rem; height: 2.3rem; font-size: 1.2rem; }
+}
