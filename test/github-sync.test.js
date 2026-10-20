@@ -11,6 +11,7 @@ fs.writeFileSync(path.join(tmpDir, 'products.json'), JSON.stringify([{ id: 'c1',
 process.env.PRODUCTS_FILE = path.join(tmpDir, 'products.json');
 process.env.SETTINGS_FILE = path.join(tmpDir, 'settings.json');
 process.env.UPLOADS_DIR = path.join(tmpDir, 'uploads');
+process.env.BANNER_FILE = path.join(tmpDir, 'banner', 'banner.jpg');
 process.env.ADMIN_PASSWORD = 'pw';
 process.env.GITHUB_TOKEN = 'test-token';
 process.env.GITHUB_REPO = 'owner/repo';
@@ -73,5 +74,47 @@ describe('GitHub persistence (mocked)', () => {
     assert.equal(res.headers.get('content-type'), 'image/jpeg');
     assert.ok(fs.existsSync(local), 'cached back to disk');
     assert.equal((await realFetch(`${base}/uploads/nope-0000000000.jpg`)).status, 404);
+  });
+
+  it('banner upload: resized, saved locally + committed to public/images/banner.jpg, settings updated', async () => {
+    const big = await sharp({ create: { width: 3200, height: 1000, channels: 3, background: '#e53935' } }).png().toBuffer();
+    const fd = new FormData();
+    fd.append('banner', new Blob([big]), 'my-banner.png');
+    assert.equal((await realFetch(base + '/api/admin/settings/banner', { method: 'POST', body: fd })).status, 401);
+    const fd2 = new FormData();
+    fd2.append('banner', new Blob([big]), 'my-banner.png');
+    const res = await realFetch(base + '/api/admin/settings/banner', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd2 });
+    const d = await res.json();
+    assert.equal(res.status, 200, JSON.stringify(d));
+    assert.match(d.settings.banner_image, /^\/images\/banner\.jpg\?v=\d+$/);
+    assert.equal(d.github, true);
+    const c = commits.find((x) => x.file === 'public/images/banner.jpg');
+    assert.ok(c);
+    assert.match(c.message, /^\[skip render\]/);
+    const meta = await sharp(repo.get('public/images/banner.jpg')).metadata();
+    assert.equal(meta.format, 'jpeg');
+    assert.equal(meta.width, 2000);
+    assert.ok(fs.existsSync(process.env.BANNER_FILE));
+    assert.equal(JSON.parse(repo.get('data/settings.json').toString()).banner_image, d.settings.banner_image);
+    assert.equal((await (await realFetch(base + '/api/settings')).json()).banner_image, d.settings.banner_image);
+  });
+
+  it('banner is fetched from GitHub when missing locally (after a restart), then cached', async () => {
+    fs.rmSync(process.env.BANNER_FILE);
+    const res = await realFetch(base + '/images/banner.jpg?v=1');
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get('content-type'), 'image/jpeg');
+    assert.ok(fs.existsSync(process.env.BANNER_FILE));
+  });
+
+  it('rejects non-images and removes the banner image', async () => {
+    const fd = new FormData();
+    fd.append('banner', new Blob(['hello']), 'notes.txt');
+    const bad = await realFetch(base + '/api/admin/settings/banner', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd });
+    assert.equal(bad.status, 400);
+    assert.match((await bad.json()).error, /only JPG, PNG, WebP or HEIC/);
+    const del = await realFetch(base + '/api/admin/settings/banner', { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+    assert.equal(del.status, 200);
+    assert.equal((await (await realFetch(base + '/api/settings')).json()).banner_image, '');
   });
 });
