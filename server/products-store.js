@@ -22,6 +22,7 @@ function reset() {
   cache = null;
 }
 
+const PLACEHOLDER_IMAGE = '/images/lot-bulk-commons.svg';
 const ID_RE = /^[a-z0-9][a-z0-9-_]{0,79}$/i;
 
 function normalise(p, idx = 0) {
@@ -35,8 +36,15 @@ function normalise(p, idx = 0) {
   if (!Number.isFinite(price) || price < 0) return { error: `${where} (${id}): price_gbp must be a number ≥ 0` };
   const stock = Number(p.stock ?? 0);
   if (!Number.isInteger(stock) || stock < 0) return { error: `${where} (${id}): stock must be a whole number ≥ 0` };
-  const image = String(p.image || '').trim() || '/images/lot-bulk-commons.svg';
-  if (!/^(https?:\/\/|\/)/i.test(image)) return { error: `${where} (${id}): image must be a URL or /path` };
+  const isUrl = (u) => /^(https?:\/\/|\/)[^\s"'<>\\]*$/i.test(u);
+  let images = Array.isArray(p.images) ? p.images.map((u) => String(u || '').trim()).filter(Boolean) : [];
+  const first = String(p.image || '').trim();
+  if (first && !images.includes(first)) images.unshift(first);
+  const bad = images.find((u) => !isUrl(u));
+  if (bad) return { error: `${where} (${id}): image must be a URL or /path (got "${bad.slice(0, 80)}")` };
+  images = [...new Set(images)].slice(0, 20);
+  if (!images.length) images = ['/images/lot-bulk-commons.svg'];
+  const image = images[0];
   const product = {
     id,
     title,
@@ -45,8 +53,14 @@ function normalise(p, idx = 0) {
     condition: String(p.condition || 'Near mint').trim(),
     category: String(p.category || 'Trading cards').trim(),
     image,
+    images,
     stock,
   };
+  if (Array.isArray(p.photo_files)) {
+    // lower-case file names (no extension) from the Vinted export, used to match bulk photo uploads
+    const pf = [...new Set(p.photo_files.map((x) => String(x).toLowerCase().trim()).filter((x) => /^[^\\/:*?"<>|]{1,120}$/.test(x)))].slice(0, 30);
+    if (pf.length) product.photo_files = pf;
+  }
   if (p.added_at && !Number.isNaN(Date.parse(p.added_at))) product.added_at = new Date(p.added_at).toISOString();
   return { product };
 }
@@ -117,5 +131,5 @@ async function decrementStock(items, reason) {
 
 module.exports = {
   get, reset, save, normalise, validateList, pullFromGitHub, checkStock, decrementStock,
-  ghConfig: sync.ghConfig,
+  ghConfig: sync.ghConfig, PLACEHOLDER_IMAGE, ID_RE,
 };

@@ -101,6 +101,10 @@ app.use(parseCookies);
 app.use('/api/admin', admin.router);
 app.get('/admin', (_req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'admin.html')));
 app.use(express.static(path.join(__dirname, '..', 'public')));
+// Uploaded photos: local disk (UPLOADS_DIR or public/uploads), then GitHub fallback after a restart.
+const images = require('./images');
+app.use('/uploads', express.static(images.uploadsDir(), { maxAge: '1d' }));
+app.get('/uploads/:file', images.serveFromGitHub);
 
 app.use((req, res, next) => {
   const session = getSession(req);
