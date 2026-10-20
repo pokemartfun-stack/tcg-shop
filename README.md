@@ -186,3 +186,9 @@ To move to another Node.js host (Railway, Koyeb, Fly.io, a VPS…):
 3. Done. Point your domain at the new host.
 
 **WordPress is a different system.** It runs PHP, not Node.js, so it can't run this app directly. Moving to WordPress would mean rebuilding the shop with WooCommerce. The card data (`data/products.json`, which can be converted to a WooCommerce product CSV) and all the images in the repo can be reused.
+
+### Photo order (cover photo)
+
+Each imported card stores `photo_files`, the photo names in JSON order (`photo` first, then `photos[]`, no duplicates), and `photo_map`, which records which uploaded file belongs to which photo name. After every upload or batch, the server sorts the card's `images` by that order, so the cover is always the JSON's first photo, whatever order the files arrive in. Photos that came with the JSON replace svg placeholders and older uploads.
+
+In admin, each thumbnail has ★ (set as cover) and ◀ ▶ (reorder). **Fix photo order** re-sorts every card by its stored JSON order. If it finds photos it can't place (for example ones uploaded before this fix on a card with a long title), it lists those cards. Re-upload their photos with "Bulk photos for existing cards", or use ★.
