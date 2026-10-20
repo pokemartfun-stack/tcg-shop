@@ -5,6 +5,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const sharp = require('sharp');
+const { makeAnimatedGif } = require('./helpers/make-gif');
 
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tcg-gh-'));
 fs.writeFileSync(path.join(tmpDir, 'products.json'), JSON.stringify([{ id: 'c1', title: 'C1', price_gbp: 1, stock: 1, image: '/images/tauros-ar.svg' }]));
@@ -168,5 +169,88 @@ describe('GitHub persistence (mocked)', () => {
     const rs = await realFetch(base + '/api/admin/settings/background/restore', { method: 'POST', headers: auth });
     assert.equal(rs.status, 200);
     assert.match((await (await realFetch(base + '/api/settings')).json()).background_image, /^\/images\/background\.jpg\?v=\d+$/);
+  });
+});
+
+describe('GIF banner / background (kept animated)', () => {
+  const auth = () => ({ Authorization: `Bearer ${token}` });
+  async function upload(field, buf, name) {
+    const fd = new FormData();
+    fd.append(field, new Blob([buf]), name);
+    const res = await realFetch(`${base}/api/admin/settings/${field}`, { method: 'POST', headers: auth(), body: fd });
+    return { status: res.status, d: await res.json() };
+  }
+  const gifPath = () => process.env.BANNER_FILE.replace(/\.jpg$/, '.gif');
+
+  it('animated banner GIF is stored as banner.gif, multi-frame, committed and served as image/gif', async () => {
+    const gif = makeAnimatedGif(600, 80, [1, 2, 3]);
+    const { status, d } = await upload('banner', gif, 'party.gif');
+    assert.equal(status, 200, JSON.stringify(d));
+    assert.equal(d.format, 'gif');
+    assert.equal(d.frames, 3);
+    assert.equal(d.animated, true);
+    assert.match(d.settings.banner_image, /^\/images\/banner\.gif\?v=\d+$/);
+    const c = commits.find((x) => x.file === 'public/images/banner.gif');
+    assert.ok(c, JSON.stringify(commits.map((x) => x.file)));
+    assert.match(c.message, /^\[skip render\]/);
+    assert.ok(repo.get('public/images/banner.gif').equals(gif), 'small GIF passed through untouched');
+    assert.equal(JSON.parse(repo.get('data/settings.json').toString()).banner_image, d.settings.banner_image);
+    const res = await realFetch(base + d.settings.banner_image);
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get('content-type'), 'image/gif');
+    const meta = await sharp(Buffer.from(await res.arrayBuffer()), { animated: true }).metadata();
+    assert.equal(meta.format, 'gif');
+    assert.equal(meta.pages, 3, 'still animated');
+  });
+
+  it('wide animated GIF is resized to 2000px wide and keeps every frame', async () => {
+    const { status, d } = await upload('banner', makeAnimatedGif(2600, 40, [1, 2, 3, 1]), 'wide.gif');
+    assert.equal(status, 200, JSON.stringify(d));
+    const meta = await sharp(repo.get('public/images/banner.gif'), { animated: true }).metadata();
+    assert.equal(meta.width, 2000);
+    assert.equal(meta.pages, 4);
+    assert.ok(meta.delay.every((ms) => ms === 200), 'frame timing kept');
+  });
+
+  it('GIF is fetched back from GitHub when missing locally (after a restart)', async () => {
+    fs.rmSync(gifPath());
+    const res = await realFetch(base + '/images/banner.gif?v=9');
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get('content-type'), 'image/gif');
+    assert.ok(fs.existsSync(gifPath()), 'cached back to disk');
+  });
+
+  it('switching GIF -> JPG -> GIF points the setting at the right file each time', async () => {
+    const png = await sharp({ create: { width: 300, height: 100, channels: 3, background: '#0a0' } }).png().toBuffer();
+    let r = await upload('banner', png, 'flat.png');
+    assert.equal(r.status, 200);
+    assert.equal(r.d.format, 'jpg');
+    assert.match(r.d.settings.banner_image, /^\/images\/banner\.jpg\?v=\d+$/);
+    let img = await realFetch(base + r.d.settings.banner_image);
+    assert.equal(img.headers.get('content-type'), 'image/jpeg');
+    r = await upload('banner', makeAnimatedGif(200, 50, [2, 3]), 'again.gif');
+    assert.match(r.d.settings.banner_image, /^\/images\/banner\.gif\?v=\d+$/);
+    assert.equal((await (await realFetch(base + '/api/settings')).json()).banner_image, r.d.settings.banner_image);
+  });
+
+  it('rejects GIFs over 8 MB and fake GIFs', async () => {
+    const huge = Buffer.concat([makeAnimatedGif(10, 10, [1]), Buffer.alloc(8 * 1024 * 1024)]);
+    const big = await upload('banner', huge, 'huge.gif');
+    assert.equal(big.status, 400);
+    assert.match(big.d.error, /under 8 MB/);
+    const fake = await upload('banner', Buffer.from('GIF89a not really'), 'fake.gif');
+    assert.equal(fake.status, 400);
+  });
+
+  it('page background accepts an animated GIF, and restore brings back the GIF after remove', async () => {
+    const { status, d } = await upload('background', makeAnimatedGif(400, 300, [1, 3]), 'bg.gif');
+    assert.equal(status, 200, JSON.stringify(d));
+    assert.equal(d.frames, 2);
+    assert.match(d.settings.background_image, /^\/images\/background\.gif\?v=\d+$/);
+    assert.ok(repo.has('public/images/background.gif'));
+    assert.equal((await realFetch(base + d.settings.background_image)).headers.get('content-type'), 'image/gif');
+    await realFetch(base + '/api/admin/settings/background', { method: 'DELETE', headers: auth() });
+    const rs = await (await realFetch(base + '/api/admin/settings/background/restore', { method: 'POST', headers: auth() })).json();
+    assert.match(rs.settings.background_image, /^\/images\/background\.gif\?v=\d+$/);
   });
 });
