@@ -132,3 +132,32 @@ You can search by name, filter by category, condition, min/max price and "In sto
 ## Banner
 
 The full-width banner under the header shows the shop name and tagline over a coloured pattern drawn in CSS (no official artwork). In `/admin → Shop banner` you can change the shop name, the tagline and an optional banner image URL. These are stored in `data/settings.json` and synced to GitHub the same way as products.
+
+## Importing from the Vinted Listing Tool + photos
+
+In `/admin → Upload JSON file + photos`:
+
+1. Choose the `vinted_listings.json` from your Export folder. Shop-format files work too.
+2. Add the photos by dragging the whole `Export\images` folder onto the drop zone, using **Choose whole folder**, or using **Choose photos**. Anything that isn't a JPG/PNG/WebP/HEIC (Thumbs.db, .txt and so on) is ignored.
+3. Before you upload, a preview shows each card with how many of its photos were found, which ones are missing, and any photos no card uses.
+4. Click **Upload**. The cards are created first, then the photos go up in small batches (4 per request) with a progress bar, so 100+ photos never hit size limits.
+
+How Vinted fields are mapped:
+
+| Vinted export | Shop |
+| --- | --- |
+| `title` | `title`, and `id` becomes a slug of the title (`-2`, `-3` if a title repeats) |
+| `price` (`4.99`, `"£4.99"`) | `price_gbp` |
+| `quality` | `condition` |
+| `category` `Hobbies & Collectables > Trading cards` | `category` `Trading cards` / `Trading card lots` |
+| `date_added` | `added_at` (used by "Newest") |
+| `photo`, `photos[]` (Windows paths) | matched to uploaded photos by file name (case and extension ignored) and stored as `images[]`; `image` = first photo |
+| `stock` / `quantity` | `stock` (default 1) |
+
+Problem items (missing title, bad price and so on) are listed one by one and skipped. **Merge** imports the rest; **Replace** changes nothing until every item is fixed.
+
+**Bulk photos for existing cards** uploads photos on their own. Each photo is matched by the file names in the card's JSON `photos`, or by card ID (`pikachu-151.jpg`). Each card row also has **Upload photo(s)** and × to remove a photo, and the Add-card form takes photos too.
+
+Photos are converted (HEIC included), resized to a maximum of 1200 px, saved as about 80% JPEG in `public/uploads/`, and, with `GITHUB_TOKEN`, committed to `public/uploads/` in the repo with `[skip render]`. After a restart, any photo missing from disk is fetched from GitHub and cached again. GitHub writes are paced (`GITHUB_WRITE_GAP_MS`, default 900 ms) and retried on rate limits, so a 100-photo upload takes a couple of minutes when GitHub sync is on.
+
+On the shop, cards with several photos show a 📷 count. Click a photo to open a simple gallery.
