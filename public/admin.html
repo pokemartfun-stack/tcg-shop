@@ -46,8 +46,13 @@
     progress { width: 100%; height: 14px; }
     .thumbs { display: flex; gap: 4px; flex-wrap: wrap; }
     .thumbs .t { position: relative; }
-    .thumbs .t img { width: 40px; height: 54px; object-fit: cover; border-radius: 4px; }
-    .thumbs .t button { position: absolute; top: -6px; right: -6px; padding: 0 5px; font-size: 11px; border-radius: 999px; background: #dc2626; line-height: 16px; }
+    .thumbs .t { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+    .thumbs .t img { width: 48px; height: 64px; object-fit: contain; background: #0b0d12; border: 1px solid #8884; border-radius: 4px; }
+    .thumbs .t.cover img { border: 2px solid #f59e0b; }
+    .thumbs .t .rm { position: absolute; top: -6px; right: -6px; padding: 0 5px; font-size: 11px; border-radius: 999px; background: #dc2626; line-height: 16px; }
+    .thumbs .ord { display: flex; gap: 1px; }
+    .thumbs .ord button { padding: 0 4px; font-size: 10px; line-height: 16px; background: #374151; border-radius: 4px; }
+    .thumbs .ord em { font-size: 10px; color: #f59e0b; font-style: normal; }
     .admin .rowphotos input[type=file] { display: none; }
   </style>
 </head>
@@ -152,6 +157,8 @@
       <section>
         <h2>Cards (<span id="count">0</span>) · <span id="oos-count"></span></h2>
         <label class="filterbar"><input type="checkbox" id="only-oos" /> Show out-of-stock only</label>
+        <button type="button" id="fix-order" title="Sort every card's photos by the order in your Vinted JSON (photo first)">Fix photo order</button>
+        <span class="hint">★ = set as cover, ◀ ▶ = reorder. The cover is the photo shown in the shop.</span>
         <table>
           <thead><tr><th>Photos</th><th>ID</th><th>Title</th><th>Price £</th><th>Quantity</th><th>Quick restock</th><th></th></tr></thead>
           <tbody id="rows"></tbody>
