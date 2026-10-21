@@ -14,6 +14,8 @@ process.env.SETTINGS_FILE = path.join(tmpDir, 'settings.json');
 process.env.UPLOADS_DIR = path.join(tmpDir, 'uploads');
 process.env.BANNER_FILE = path.join(tmpDir, 'banner', 'banner.jpg');
 process.env.BACKGROUND_FILE = path.join(tmpDir, 'bg', 'background.jpg');
+process.env.LOGO_FILE = path.join(tmpDir, 'logo', 'logo.png');
+process.env.FAVICON_FILE = path.join(tmpDir, 'logo', 'favicon.png');
 process.env.ADMIN_PASSWORD = 'pw';
 process.env.GITHUB_TOKEN = 'test-token';
 process.env.GITHUB_REPO = 'owner/repo';
@@ -252,5 +254,64 @@ describe('GIF banner / background (kept animated)', () => {
     await realFetch(base + '/api/admin/settings/background', { method: 'DELETE', headers: auth() });
     const rs = await (await realFetch(base + '/api/admin/settings/background/restore', { method: 'POST', headers: auth() })).json();
     assert.match(rs.settings.background_image, /^\/images\/background\.gif\?v=\d+$/);
+  });
+});
+
+describe('shop logo + favicon', () => {
+  const auth = () => ({ Authorization: `Bearer ${token}` });
+  async function upload(buf, name) {
+    const fd = new FormData();
+    fd.append('logo', new Blob([buf]), name);
+    const res = await realFetch(`${base}/api/admin/settings/logo`, { method: 'POST', headers: auth(), body: fd });
+    return { status: res.status, d: await res.json() };
+  }
+
+  it('requires admin', async () => {
+    const fd = new FormData();
+    fd.append('logo', new Blob([Buffer.from('x')]), 'a.png');
+    assert.equal((await realFetch(`${base}/api/admin/settings/logo`, { method: 'POST', body: fd })).status, 401);
+  });
+
+  it('logo upload: 512px square PNG committed, favicon regenerated + committed, setting updated', async () => {
+    const wide = await sharp({ create: { width: 900, height: 500, channels: 3, background: '#ffcb05' } }).jpeg().toBuffer();
+    const { status, d } = await upload(wide, 'my-logo.jpg');
+    assert.equal(status, 200, JSON.stringify(d));
+    assert.equal(d.github, true);
+    assert.match(d.settings.logo_image, /^\/images\/logo\.png\?v=\d+$/);
+    const logoMeta = await sharp(repo.get('public/images/logo.png')).metadata();
+    assert.deepEqual([logoMeta.format, logoMeta.width, logoMeta.height], ['png', 512, 512]);
+    const fav = repo.get('public/favicon.png');
+    assert.ok(fav, 'favicon committed');
+    const favMeta = await sharp(fav).metadata();
+    assert.deepEqual([favMeta.format, favMeta.width, favMeta.height, favMeta.hasAlpha], ['png', 64, 64, true]);
+    const { data } = await sharp(fav).raw().toBuffer({ resolveWithObject: true });
+    assert.equal(data[3], 0, 'favicon corner is transparent (round)');
+    assert.equal(JSON.parse(repo.get('data/settings.json').toString()).logo_image, d.settings.logo_image);
+    const res = await realFetch(base + d.settings.logo_image);
+    assert.equal(res.headers.get('content-type'), 'image/png');
+    const f = await realFetch(base + '/favicon.png');
+    assert.equal(f.status, 200);
+    assert.equal(f.headers.get('content-type'), 'image/png');
+  });
+
+  it('animated GIF logo stays animated (logo.gif)', async () => {
+    const { status, d } = await upload(makeAnimatedGif(120, 120, [1, 2, 3]), 'spin.gif');
+    assert.equal(status, 200, JSON.stringify(d));
+    assert.match(d.settings.logo_image, /^\/images\/logo\.gif\?v=\d+$/);
+    assert.equal((await sharp(repo.get('public/images/logo.gif'), { animated: true }).metadata()).pages, 3);
+    assert.equal((await realFetch(base + d.settings.logo_image)).headers.get('content-type'), 'image/gif');
+  });
+
+  it('rejects non-images; "Use default logo" points back at logo-default.png and resets the favicon', async () => {
+    const bad = await upload(Buffer.from('hello'), 'notes.txt');
+    assert.equal(bad.status, 400);
+    const before = commits.filter((c) => c.file === 'public/favicon.png').length;
+    const res = await realFetch(`${base}/api/admin/settings/logo`, { method: 'DELETE', headers: auth() });
+    const d = await res.json();
+    assert.equal(res.status, 200, JSON.stringify(d));
+    assert.equal(d.settings.logo_image, '/images/logo-default.png');
+    assert.equal(commits.filter((c) => c.file === 'public/favicon.png').length, before + 1);
+    const def = await realFetch(base + '/images/logo-default.png');
+    assert.equal(def.status, 200);
   });
 });

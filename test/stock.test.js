@@ -133,6 +133,34 @@ describe('banner settings', () => {
     assert.equal((await call('PUT', '/api/admin/settings', { background_image: '/images/background.jpg' }, { admin: adminToken })).status, 200);
   });
 
+  it('logo + "show shop name over banner" settings: defaults, toggling, validation', async () => {
+    const pub = (await call('GET', '/api/settings')).data;
+    assert.equal(pub.show_banner_text, false, 'off by default (banner art has its own lettering)');
+    assert.equal(pub.logo_image, '/images/logo.png');
+    for (const [input, expected] of [[true, true], ['on', true], [false, false], ['false', false]]) {
+      const r = await call('PUT', '/api/admin/settings', { show_banner_text: input }, { admin: adminToken });
+      assert.equal(r.status, 200);
+      assert.equal(r.data.settings.show_banner_text, expected);
+    }
+    assert.equal(JSON.parse(fs.readFileSync(tmpSettings, 'utf8')).show_banner_text, false);
+    assert.equal((await call('PUT', '/api/admin/settings', { logo_image: 'javascript:x' }, { admin: adminToken })).status, 400);
+    assert.equal((await call('PUT', '/api/admin/settings', { logo_image: '/a.png"><script>' }, { admin: adminToken })).status, 400);
+  });
+
+  it('every customer page has the logo, favicon links and (index) a hero h1', async () => {
+    for (const page of ['/', '/cart.html', '/checkout.html', '/success.html']) {
+      const html = await (await fetch(base + page)).text();
+      assert.match(html, /<img class="brand-logo" src="\/images\/logo\.png"/, page);
+      assert.match(html, /rel="icon"[^>]+\/favicon\.png/, page);
+      assert.doesNotMatch(html, /brand-mark/, page);
+    }
+    const index = await (await fetch(base + '/')).text();
+    assert.match(index, /<h1 id="hero-name">/);
+    for (const f of ['/images/logo.png', '/images/logo-default.png', '/favicon.png', '/favicon.ico', '/fonts/luckiest-guy-latin.woff2']) {
+      assert.equal((await fetch(base + f)).status, 200, f);
+    }
+  });
+
   it('serves the committed background image file', async () => {
     const res = await fetch(base + '/images/background.jpg');
     assert.equal(res.status, 200);
