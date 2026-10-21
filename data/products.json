@@ -130,16 +130,21 @@
     "price_gbp": 6,
     "condition": "Very good",
     "category": "Trading card lots",
-    "image": "/images/lot-bulk-commons.svg",
+    "image": "/uploads/pokemon-tcg-gx-ex-v-mixed-bundled-chinese-nm-2026-10-18-5e22ad44-00eebe0f27.jpg",
     "images": [
-      "/images/lot-bulk-commons.svg"
+      "/uploads/pokemon-tcg-gx-ex-v-mixed-bundled-chinese-nm-2026-10-18-5e22ad44-00eebe0f27.jpg",
+      "/uploads/pokemon-tcg-gx-ex-v-mixed-bundled-chinese-nm-2026-10-18-9fd48ddb-4e24345817.jpg"
     ],
     "stock": 1,
     "added_at": "2026-10-18T00:00:00.000Z",
     "photo_files": [
       "2026-10-18_5e22ad44",
       "2026-10-18_9fd48ddb"
-    ]
+    ],
+    "photo_map": {
+      "2026-10-18_5e22ad44": "/uploads/pokemon-tcg-gx-ex-v-mixed-bundled-chinese-nm-2026-10-18-5e22ad44-00eebe0f27.jpg",
+      "2026-10-18_9fd48ddb": "/uploads/pokemon-tcg-gx-ex-v-mixed-bundled-chinese-nm-2026-10-18-9fd48ddb-4e24345817.jpg"
+    }
   },
   {
     "id": "pokemon-tcg-chr-mixed-bunlded-chinese-nm",
@@ -148,16 +153,21 @@
     "price_gbp": 12,
     "condition": "Very good",
     "category": "Trading card lots",
-    "image": "/images/lot-bulk-commons.svg",
+    "image": "/uploads/pokemon-tcg-chr-mixed-bunlded-chinese-nm-2026-10-18-f2bf6e9e-e66bc1d292.jpg",
     "images": [
-      "/images/lot-bulk-commons.svg"
+      "/uploads/pokemon-tcg-chr-mixed-bunlded-chinese-nm-2026-10-18-f2bf6e9e-e66bc1d292.jpg",
+      "/uploads/pokemon-tcg-chr-mixed-bunlded-chinese-nm-2026-10-18-e66eed80-f5ae7d2910.jpg"
     ],
     "stock": 1,
     "added_at": "2026-10-18T00:00:00.000Z",
     "photo_files": [
       "2026-10-18_f2bf6e9e",
       "2026-10-18_e66eed80"
-    ]
+    ],
+    "photo_map": {
+      "2026-10-18_f2bf6e9e": "/uploads/pokemon-tcg-chr-mixed-bunlded-chinese-nm-2026-10-18-f2bf6e9e-e66bc1d292.jpg",
+      "2026-10-18_e66eed80": "/uploads/pokemon-tcg-chr-mixed-bunlded-chinese-nm-2026-10-18-e66eed80-f5ae7d2910.jpg"
+    }
   },
   {
     "id": "pokemon-tcg-full-art-mixed-bundled-chinese-nm",
