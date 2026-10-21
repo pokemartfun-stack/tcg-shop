@@ -409,3 +409,141 @@ html.has-page-bg .site-footer { border-top-color: rgba(255, 255, 255, 0.12); }
 @media (max-width: 640px) {
   html.has-page-bg body::before { background-position: center 30%; }
 }
+
+/* ======================================================================
+   Pokémon theme (round 4): shop logo in the nav, Poké Ball reds,
+   Pokémon yellow/blue accents, and a full-colour, uncropped banner.
+   Font: Luckiest Guy (Astigmatic, Apache 2.0, bundled in /fonts).
+   ====================================================================== */
+@font-face {
+  font-family: 'Luckiest Guy';
+  font-style: normal; font-weight: 400; font-display: swap;
+  src: url('/fonts/luckiest-guy-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Luckiest Guy';
+  font-style: normal; font-weight: 400; font-display: swap;
+  src: url('/fonts/luckiest-guy-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+:root {
+  --poke-red: #E3350D;
+  --poke-red-hover: #ff4b22;
+  --poke-yellow: #FFCB05;
+  --poke-blue: #2A75BB;
+  --poke-navy: #1D2C5E;
+  --font-display: 'Luckiest Guy', 'Segoe UI Black', 'Arial Black', system-ui, sans-serif;
+  --accent: var(--poke-blue);
+  --accent-hover: #3d8ad4;
+}
+
+/* ---------- Nav bar: navy glass, Poké Ball red + black band underneath ---------- */
+.site-header {
+  background: linear-gradient(180deg, rgba(29, 44, 94, 0.96) 0%, rgba(17, 22, 40, 0.95) 100%);
+  border-bottom: 3px solid var(--poke-red);
+  box-shadow: 0 3px 0 #0b0b0f, 0 8px 22px rgba(0, 0, 0, 0.35);
+}
+.header-inner { padding: 0.55rem 0; }
+.brand { gap: 0.7rem; }
+.brand-logo {
+  width: 50px; height: 50px; flex: none; display: block;
+  border-radius: 50%; object-fit: cover; background: #e7e2de;
+  border: 3px solid var(--poke-yellow);
+  box-shadow: 0 0 0 2px var(--poke-navy), 0 4px 10px rgba(0, 0, 0, 0.45);
+  transition: transform 0.2s ease;
+}
+.brand:hover .brand-logo { transform: rotate(-10deg) scale(1.05); }
+.brand-name {
+  font-family: var(--font-display);
+  font-size: 1.55rem; line-height: 1; letter-spacing: 0.03em;
+  color: var(--poke-yellow);
+  -webkit-text-stroke: 5px var(--poke-blue);
+  paint-order: stroke fill;
+  text-shadow: 2px 3px 0 var(--poke-navy);
+  padding-top: 0.15em; /* the display font sits high */
+}
+.nav a, .nav button.linkish { color: #d5dcef; font-weight: 600; }
+.nav a:hover, .nav button.linkish:hover { color: var(--poke-yellow); }
+.badge { background: var(--poke-yellow); color: var(--poke-navy); font-weight: 800; }
+.hint strong { color: var(--poke-yellow); }
+
+/* ---------- Banner: uploaded image at its natural size ratio, full colour ---------- */
+.hero-banner { z-index: 1; } /* always above the page-background dim layers */
+.hero-banner.has-image {
+  display: block; min-height: 0;
+  background: #0f1117; /* only visible for a split second while the image loads */
+  border-bottom: 3px solid #0b0b0f;
+}
+.hero-banner.has-image .hero-pattern { display: none; }
+.hero-img {
+  display: block; width: 100%; height: auto;
+  /* deliberately no filter / opacity / overlay: shown exactly as uploaded */
+}
+.hero-img[hidden] { display: none; }
+/* Pattern-only banner (no image) without text: a slimmer band */
+.hero-banner:not(.has-image):not(.show-text) { min-height: clamp(90px, 14vw, 180px); }
+
+/* Shop name + tagline: visually hidden (still the page h1 for screen readers / SEO) ... */
+.hero-banner:not(.show-text) .hero-content {
+  position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0;
+}
+/* ... or, with "Show shop name over banner" on, Pokémon-style lettering */
+.hero-banner.show-text h1 {
+  font-family: var(--font-display); font-weight: 400; letter-spacing: 0.02em;
+  color: var(--poke-yellow);
+  -webkit-text-stroke: clamp(6px, 1vw, 12px) var(--poke-blue);
+  paint-order: stroke fill;
+  text-shadow: 3px 5px 0 var(--poke-navy), 0 10px 24px rgba(0, 0, 0, 0.45);
+  transform: rotate(-2deg); transform-origin: left center;
+}
+.hero-banner.show-text p {
+  display: inline-block; margin-top: 0.6rem; padding: 0.35rem 0.95rem 0.35rem 2.1rem; position: relative;
+  border-radius: 999px; background: #fff; color: var(--poke-navy); text-shadow: none;
+  border: 3px solid #111; box-shadow: 0 3px 0 #111; font-size: clamp(0.85rem, 1.8vw, 1.05rem);
+}
+.hero-banner.show-text p::before { /* mini Poké Ball */
+  content: ""; position: absolute; left: 0.55rem; top: 50%; width: 1rem; height: 1rem; transform: translateY(-50%);
+  border-radius: 50%; border: 2px solid #111;
+  background: radial-gradient(circle, #fff 0 22%, #111 23% 34%, transparent 35%), linear-gradient(180deg, var(--poke-red) 0 46%, #111 46% 54%, #fff 54%);
+}
+.hero-banner.show-text.has-image .hero-content {
+  position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: flex-start;
+  /* the only tint ever drawn on the banner, and only behind the text */
+  background: linear-gradient(90deg, rgba(10, 12, 18, 0.55) 0%, rgba(10, 12, 18, 0.15) 45%, transparent 70%);
+}
+
+/* ---------- Buttons / badges / tiles ---------- */
+.btn { background: var(--poke-red); box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.22); }
+.btn:hover { background: var(--poke-red-hover); }
+.btn:focus-visible { outline: 3px solid var(--poke-yellow); outline-offset: 2px; }
+.btn.secondary, .btn.ghost { box-shadow: none; }
+.btn.secondary:hover { border-color: var(--poke-yellow); }
+.price { color: var(--poke-yellow); text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6); }
+.card:hover { border-color: var(--poke-yellow); box-shadow: 0 14px 32px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 203, 5, 0.35); }
+.stock-badge { background: rgba(42, 117, 187, 0.22); color: #cfe5ff; border-color: rgba(84, 156, 226, 0.6); }
+.stock-badge.low { background: rgba(255, 203, 5, 0.16); color: #ffe27a; border-color: rgba(255, 203, 5, 0.55); }
+.ribbon { background: var(--poke-red); box-shadow: 0 2px 0 #111; }
+.tabs button.active { border-color: var(--poke-yellow); }
+.filters input:focus, .filters select:focus, .form-row input:focus { outline: 2px solid rgba(255, 203, 5, 0.55); border-color: var(--poke-yellow); }
+.gallery-thumbs button.active { border-color: var(--poke-yellow); }
+
+@media (max-width: 640px) {
+  .brand-logo { width: 38px; height: 38px; border-width: 2px; }
+  .brand-name { font-size: 1.1rem; -webkit-text-stroke-width: 4px; text-shadow: 1px 2px 0 var(--poke-navy); }
+  .header-inner { gap: 0.5rem; }
+}
+@media (max-width: 400px) {
+  .brand-name { font-size: 1rem; }
+}
+/* Phones: the round logo already reads "Poke Mart", so the text name is hidden (kept for screen readers)
+   and the nav fits on one line. */
+@media (max-width: 480px) {
+  .brand-name {
+    position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden;
+    clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+  }
+  .nav { gap: 0.15rem; flex-wrap: nowrap; }
+  .nav a, .nav button.linkish { padding: 0.35rem 0.4rem; font-size: 0.9rem; }
+}
