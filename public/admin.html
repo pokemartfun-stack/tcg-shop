@@ -6,7 +6,11 @@
   <meta name="robots" content="noindex" />
   <title>Shop admin — Po-ke Mart Fun</title>
   <link rel="stylesheet" href="/css/styles.css" />
+  <link rel="icon" type="image/png" sizes="64x64" href="/favicon.png" />
+  <link rel="icon" href="/favicon.ico" sizes="any" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <style>
+    @font-face { font-family: 'Luckiest Guy'; font-display: swap; src: url('/fonts/luckiest-guy-latin.woff2') format('woff2'); }
     .admin { max-width: 1100px; margin: 24px auto; padding: 0 16px; }
     .admin section { background: #fff1; border: 1px solid #8884; border-radius: 10px; padding: 16px; margin-bottom: 18px; }
     .admin table { width: 100%; border-collapse: collapse; font-size: 14px; }
@@ -30,6 +34,16 @@
     .admin .bg-preview .bg-dim { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10,12,18,.30), rgba(10,12,18,.60)); }
     .admin .bg-preview .bg-tile { position: relative; margin: 14px; padding: 8px 12px; border-radius: 8px; background: rgba(26,29,39,.94); border: 1px solid #2e3345; color: #fff; font-size: 13px; }
     .admin .bg-preview .bg-none { position: relative; margin: auto; color: #9aa3b5; font-size: 13px; }
+    .admin .checkline { justify-content: flex-end; }
+    .admin .checkline span:first-child { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; }
+    .admin .checkline input { width: 18px; height: 18px; }
+    .admin .banner-preview.no-text { color: transparent; text-shadow: none; }
+    .admin .banner-preview[style*="url("] { height: auto; aspect-ratio: 4 / 1; max-height: 260px; background-size: contain !important; background-repeat: no-repeat !important; background-position: center !important; background-color: #0b0d12; }
+    .admin .logo-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .admin .logo-preview { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; background: #e7e2de; border: 4px solid #FFCB05; box-shadow: 0 0 0 3px #1D2C5E; }
+    .admin .logo-nav-demo { display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-radius: 10px; background: linear-gradient(180deg,#1D2C5E,#111628); border-bottom: 3px solid #E3350D; }
+    .admin .logo-nav-demo img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 3px solid #FFCB05; box-shadow: 0 0 0 2px #1D2C5E; background: #e7e2de; }
+    .admin .logo-nav-demo span { font-family: 'Luckiest Guy', sans-serif; font-size: 22px; color: #FFCB05; -webkit-text-stroke: 5px #2A75BB; paint-order: stroke fill; text-shadow: 2px 3px 0 #1D2C5E; padding-top: 3px; }
     .admin .filterbar { margin-bottom: 8px; }
     @media (max-width: 700px) { .admin table thead { display: none; } .admin table tr { display: grid; grid-template-columns: 50px 1fr; gap: 4px; border-bottom: 1px solid #8884; padding: 6px 0; } .admin table td { border: 0; } .admin table td:first-child { grid-row: span 5; } }
     #msg { position: sticky; top: 0; z-index: 10; min-height: 0; font-weight: 600; white-space: pre-line; margin: 0 0 12px; border-radius: 8px; }
@@ -83,6 +97,7 @@
           <label>Shop name<input name="shop_name" maxlength="60" required /></label>
           <label>Tagline<input name="tagline" maxlength="160" /></label>
           <label>Or banner image URL (optional external link; blank = coloured pattern)<input name="banner_image" placeholder="https://..." /></label>
+          <label class="checkline"><span><input type="checkbox" name="show_banner_text" id="show-banner-text" /> Show shop name over banner</span><span class="hint">Leave off if your banner picture already has the shop name in it (the name is still read out by screen readers).</span></label>
           <div><button type="submit">Save banner</button></div>
         </form>
         <div class="banner-preview" id="banner-preview">Po-ke Mart Fun</div>
@@ -95,6 +110,24 @@
           </div>
         </div>
         <div class="result" id="banner-result"></div>
+      </section>
+
+      <section id="logo-section">
+        <h2>Shop logo</h2>
+        <p class="hint">Shown as a round badge in the top bar of every page, and used for the browser tab icon (favicon). Saved as <code>public/images/logo.png</code> (or <code>logo.gif</code>) in your GitHub repo. A square picture works best.</p>
+        <div class="logo-row">
+          <img class="logo-preview" id="logo-preview" src="/images/logo.png" alt="Current shop logo" />
+          <div class="logo-nav-demo" aria-hidden="true"><img id="logo-nav-demo" src="/images/logo.png" alt="" /><span id="logo-nav-name">Po-ke Mart Fun</span></div>
+        </div>
+        <div class="dropzone" id="logo-drop">
+          <strong>Upload shop logo</strong>
+          <span class="hint">Drag &amp; drop one image here, or choose a file · JPG, PNG, WebP, HEIC or GIF · cropped to a 512px square (shown as a circle) · animated GIFs stay animated (max 8 MB)</span>
+          <div class="pick-row">
+            <label class="btnlike">Choose logo image<input type="file" id="logo-file" accept="image/jpeg,image/png,image/webp,image/gif,.heic,.heif,.jpg,.jpeg,.png,.webp,.gif" /></label>
+            <button type="button" class="ghost" id="logo-reset">Use default logo</button>
+          </div>
+        </div>
+        <div class="result" id="logo-result"></div>
       </section>
 
       <section id="background-section">
