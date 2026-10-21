@@ -478,6 +478,7 @@ html.has-page-bg .site-footer { border-top-color: rgba(255, 255, 255, 0.12); }
 .hero-banner.has-image .hero-pattern { display: none; }
 .hero-img {
   display: block; width: 100%; height: auto;
+  aspect-ratio: 4 / 1; /* reserved space until the real ratio is known (set inline by server/JS) */
   /* deliberately no filter / opacity / overlay: shown exactly as uploaded */
 }
 .hero-img[hidden] { display: none; }
