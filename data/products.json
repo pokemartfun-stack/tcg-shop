@@ -176,15 +176,20 @@
     "price_gbp": 13,
     "condition": "Very good",
     "category": "Trading card lots",
-    "image": "/images/lot-bulk-commons.svg",
+    "image": "/uploads/pokemon-tcg-full-art-mixed-bundled-chinese-nm-2026-10-18-74afc9a4-4bf34e7fc2.jpg",
     "images": [
-      "/images/lot-bulk-commons.svg"
+      "/uploads/pokemon-tcg-full-art-mixed-bundled-chinese-nm-2026-10-18-74afc9a4-4bf34e7fc2.jpg",
+      "/uploads/pokemon-tcg-full-art-mixed-bundled-chinese-nm-2026-10-18-97b24da7-d22cec1053.jpg"
     ],
     "stock": 1,
     "added_at": "2026-10-18T00:00:00.000Z",
     "photo_files": [
       "2026-10-18_74afc9a4",
       "2026-10-18_97b24da7"
-    ]
+    ],
+    "photo_map": {
+      "2026-10-18_74afc9a4": "/uploads/pokemon-tcg-full-art-mixed-bundled-chinese-nm-2026-10-18-74afc9a4-4bf34e7fc2.jpg",
+      "2026-10-18_97b24da7": "/uploads/pokemon-tcg-full-art-mixed-bundled-chinese-nm-2026-10-18-97b24da7-d22cec1053.jpg"
+    }
   }
 ]
