@@ -3,30 +3,39 @@
     "id": "tauros-ar",
     "title": "Tauros — Illustration Rare",
     "description": "Scarlet & Violet era illustration rare. Near mint. Placeholder listing — no official artwork used.",
-    "price_gbp": 2.00,
+    "price_gbp": 2,
     "condition": "Near mint",
     "category": "Trading cards",
     "image": "/images/tauros-ar.svg",
+    "images": [
+      "/images/tauros-ar.svg"
+    ],
     "stock": 3
   },
   {
     "id": "varoom-ar",
     "title": "Varoom — Illustration Rare",
     "description": "Obsidian Flames illustration rare. Near mint with possible slight edge wear — see photos on request.",
-    "price_gbp": 3.50,
+    "price_gbp": 3.5,
     "condition": "Near mint",
     "category": "Trading cards",
     "image": "/images/varoom-ar.svg",
+    "images": [
+      "/images/varoom-ar.svg"
+    ],
     "stock": 2
   },
   {
     "id": "revavroom-sar",
     "title": "Revavroom ex — Special Illustration Rare",
     "description": "Obsidian Flames SAR. Near mint. Bundle discount available on multi-buys.",
-    "price_gbp": 10.00,
+    "price_gbp": 10,
     "condition": "Near mint",
     "category": "Trading cards",
     "image": "/images/revavroom-sar.svg",
+    "images": [
+      "/images/revavroom-sar.svg"
+    ],
     "stock": 1
   },
   {
@@ -37,26 +46,125 @@
     "condition": "Very good",
     "category": "Trading cards",
     "image": "/images/pikachu-promo.svg",
+    "images": [
+      "/images/pikachu-promo.svg"
+    ],
     "stock": 5
   },
   {
     "id": "charizard-ex",
     "title": "Charizard ex — Double Rare (placeholder)",
     "description": "Example chase single. Generic coloured placeholder — replace with your own photos.",
-    "price_gbp": 18.00,
+    "price_gbp": 18,
     "condition": "Near mint",
     "category": "Trading cards",
     "image": "/images/charizard-ex.svg",
+    "images": [
+      "/images/charizard-ex.svg"
+    ],
     "stock": 1
   },
   {
     "id": "lot-bulk-commons",
     "title": "Bulk commons lot (50 cards)",
     "description": "Mixed-set commons/uncommons lot. Good for binders and crafts. Category: Trading card lots.",
-    "price_gbp": 6.50,
+    "price_gbp": 6.5,
     "condition": "Good",
     "category": "Trading card lots",
     "image": "/images/lot-bulk-commons.svg",
+    "images": [
+      "/images/lot-bulk-commons.svg"
+    ],
     "stock": 4
+  },
+  {
+    "id": "pokemon-tcg-evee-evolution-v-set-chinese-nm",
+    "title": "Pokemon TCG Evee Evolution V Set - Chinese NM",
+    "description": "Please follow & check out other listed items\nBundle them up ( taking benefit of cutting postage cost & getting bundle discount, feel free to message me or send an offer) \n\n#3+items get 5% discount\n#5+items get 10% discount\n\nNear mint condition\n\n#bundlediscount\n#pokemon\n#tcg",
+    "price_gbp": 11,
+    "condition": "Very good",
+    "category": "Trading card lots",
+    "image": "/images/lot-bulk-commons.svg",
+    "images": [
+      "/images/lot-bulk-commons.svg"
+    ],
+    "stock": 1,
+    "added_at": "2026-10-18T00:00:00.000Z",
+    "photo_files": [
+      "2026-10-18_d80768a6",
+      "2026-10-18_c0dde7f0"
+    ]
+  },
+  {
+    "id": "pokemon-tcg-evee-evolution-ex-set-chinese-nm",
+    "title": "Pokemon TCG Evee Evolution Ex Set - Chinese NM",
+    "description": "Please follow & check out other listed items\nBundle them up ( taking benefit of cutting postage cost & getting bundle discount, feel free to message me or send an offer) \n\n#3+items get 5% discount\n#5+items get 10% discount\n\nNear mint condition\n\n#bundlediscount\n#pokemon\n#tcg",
+    "price_gbp": 14,
+    "condition": "Very good",
+    "category": "Trading card lots",
+    "image": "/images/lot-bulk-commons.svg",
+    "images": [
+      "/images/lot-bulk-commons.svg"
+    ],
+    "stock": 1,
+    "added_at": "2026-10-18T00:00:00.000Z",
+    "photo_files": [
+      "2026-10-18_668a62c1",
+      "2026-10-18_11ff05b0"
+    ]
+  },
+  {
+    "id": "pokemon-tcg-gx-ex-v-mixed-bundled-chinese-nm",
+    "title": "Pokemon TCG Gx/Ex/V Mixed Bundled - Chinese NM",
+    "description": "Please follow & check out other listed items\nBundle them up ( taking benefit of cutting postage cost & getting bundle discount, feel free to message me or send an offer) \n\n#3+items get 5% discount\n#5+items get 10% discount\n\nNear mint condition\n\n#bundlediscount\n#pokemon\n#tcg",
+    "price_gbp": 6,
+    "condition": "Very good",
+    "category": "Trading card lots",
+    "image": "/images/lot-bulk-commons.svg",
+    "images": [
+      "/images/lot-bulk-commons.svg"
+    ],
+    "stock": 1,
+    "added_at": "2026-10-18T00:00:00.000Z",
+    "photo_files": [
+      "2026-10-18_5e22ad44",
+      "2026-10-18_9fd48ddb"
+    ]
+  },
+  {
+    "id": "pokemon-tcg-chr-mixed-bunlded-chinese-nm",
+    "title": "Pokemon TCG CHR Mixed Bunlded - Chinese NM",
+    "description": "Please follow & check out other listed items\nBundle them up ( taking benefit of cutting postage cost & getting bundle discount, feel free to message me or send an offer) \n\n#3+items get 5% discount\n#5+items get 10% discount\n\nNear mint condition\n\n#bundlediscount\n#pokemon\n#tcg",
+    "price_gbp": 12,
+    "condition": "Very good",
+    "category": "Trading card lots",
+    "image": "/images/lot-bulk-commons.svg",
+    "images": [
+      "/images/lot-bulk-commons.svg"
+    ],
+    "stock": 1,
+    "added_at": "2026-10-18T00:00:00.000Z",
+    "photo_files": [
+      "2026-10-18_f2bf6e9e",
+      "2026-10-18_e66eed80"
+    ]
+  },
+  {
+    "id": "pokemon-tcg-full-art-mixed-bundled-chinese-nm",
+    "title": "Pokemon TCG Full Art Mixed Bundled - Chinese NM",
+    "description": "Please follow & check out other listed items\nBundle them up ( taking benefit of cutting postage cost & getting bundle discount, feel free to message me or send an offer) \n\n#3+items get 5% discount\n#5+items get 10% discount\n\nNear mint condition\n\n#bundlediscount\n#pokemon\n#tcg",
+    "price_gbp": 13,
+    "condition": "Very good",
+    "category": "Trading card lots",
+    "image": "/images/lot-bulk-commons.svg",
+    "images": [
+      "/images/lot-bulk-commons.svg"
+    ],
+    "stock": 1,
+    "added_at": "2026-10-18T00:00:00.000Z",
+    "photo_files": [
+      "2026-10-18_74afc9a4",
+      "2026-10-18_97b24da7"
+    ]
   }
 ]
