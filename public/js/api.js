@@ -23,7 +23,7 @@ function formatGbp(n) {
 }
 
 // ---- Page background (admin "Page background"; image lives in the repo at /images/background.jpg) ----
-// Cached in localStorage so it paints instantly on the next page, then refreshed from /api/settings.
+// Rendered into the HTML by the server (server/page-render.js); refreshed from /api/settings.
 function applyPageBackground(url) {
   const ok = typeof url === 'string' && /^(https?:\/\/|\/)[^"'()\s\\]*$/i.test(url);
   const root = document.documentElement;
@@ -46,21 +46,18 @@ function applyBrand(s) {
   }
   if (s.shop_name) document.querySelectorAll('[data-shop-name]').forEach((el) => { el.textContent = s.shop_name; });
 }
-try { applyBrand(JSON.parse(localStorage.getItem('brand') || 'null')); } catch { /* ignore */ }
+try { ['pageBg', 'brand', 'hero'].forEach((k) => localStorage.removeItem(k)); } catch { /* old caches, no longer used */ }
 
 (function initPageBackground() {
-  let cached = null;
-  try { cached = localStorage.getItem('pageBg'); } catch { /* private mode */ }
-  if (cached !== null) applyPageBackground(cached);
+  // The server already puts the background into the HTML; this only picks up later changes.
+  // (No localStorage pre-apply any more: a stale cached value could hide the server's one.)
   fetch('/api/settings', { credentials: 'same-origin' })
     .then((r) => (r.ok ? r.json() : null))
     .then((s) => {
       if (!s) return;
       const url = s.background_image || '';
       applyPageBackground(url);
-      try { localStorage.setItem('pageBg', url); } catch { /* ignore */ }
       applyBrand(s);
-      try { localStorage.setItem('brand', JSON.stringify({ logo_image: s.logo_image, shop_name: s.shop_name })); } catch { /* ignore */ }
     })
     .catch(() => {});
 })();

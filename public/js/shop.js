@@ -34,7 +34,6 @@ function applyHero(s) {
   hero.classList.toggle('has-image', okUrl);
   img.hidden = !okUrl;
   if (okUrl) {
-    if (s.ratio) img.style.aspectRatio = s.ratio;
     if (img.getAttribute('src') !== url) img.setAttribute('src', url);
   } else {
     img.removeAttribute('src');
@@ -43,29 +42,19 @@ function applyHero(s) {
 }
 
 async function showHero() {
-  let cached = null;
-  try { cached = JSON.parse(localStorage.getItem('hero') || 'null'); } catch { /* ignore */ }
-  if (cached) applyHero(cached);
+  // The server already renders the banner <img> (src + ratio) into the HTML; this keeps the
+  // ratio exact once the picture loads and picks up settings changed since the page was served.
   const img = $('hero-img');
-  img.addEventListener('load', () => {
-    if (!img.naturalWidth) return;
-    const ratio = `${img.naturalWidth} / ${img.naturalHeight}`;
-    img.style.aspectRatio = ratio;
-    try {
-      const c = JSON.parse(localStorage.getItem('hero') || '{}');
-      if (c.banner_image === img.getAttribute('src')) localStorage.setItem('hero', JSON.stringify({ ...c, ratio }));
-    } catch { /* ignore */ }
-  });
+  const fixRatio = () => { if (img.naturalWidth) img.style.aspectRatio = `${img.naturalWidth} / ${img.naturalHeight}`; };
+  img.addEventListener('load', fixRatio);
+  if (img.complete) fixRatio();
   try {
     const s = await api('/api/settings');
     $('hero-name').textContent = s.shop_name || 'Po-ke Mart Fun';
     $('hero-tagline').textContent = s.tagline || '';
     $('hero-tagline').hidden = !s.tagline;
-    const next = { banner_image: s.banner_image || '', show_banner_text: Boolean(s.show_banner_text) };
-    if (cached && cached.banner_image === next.banner_image) next.ratio = cached.ratio;
-    applyHero(next);
-    try { localStorage.setItem('hero', JSON.stringify(next)); } catch { /* ignore */ }
-  } catch { /* keep defaults */ }
+    applyHero({ banner_image: s.banner_image || '', show_banner_text: Boolean(s.show_banner_text) });
+  } catch { /* keep what the server rendered */ }
 }
 
 function stockLabel(p) {
