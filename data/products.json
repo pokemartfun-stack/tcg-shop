@@ -84,16 +84,21 @@
     "price_gbp": 11,
     "condition": "Very good",
     "category": "Trading card lots",
-    "image": "/images/lot-bulk-commons.svg",
+    "image": "/uploads/pokemon-tcg-evee-evolution-v-set-chinese-nm-2026-10-18-d80768a6-26879ea63b.jpg",
     "images": [
-      "/images/lot-bulk-commons.svg"
+      "/uploads/pokemon-tcg-evee-evolution-v-set-chinese-nm-2026-10-18-d80768a6-26879ea63b.jpg",
+      "/uploads/pokemon-tcg-evee-evolution-v-set-chinese-nm-2026-10-18-c0dde7f0-f4b9d46ddf.jpg"
     ],
     "stock": 1,
     "added_at": "2026-10-18T00:00:00.000Z",
     "photo_files": [
       "2026-10-18_d80768a6",
       "2026-10-18_c0dde7f0"
-    ]
+    ],
+    "photo_map": {
+      "2026-10-18_d80768a6": "/uploads/pokemon-tcg-evee-evolution-v-set-chinese-nm-2026-10-18-d80768a6-26879ea63b.jpg",
+      "2026-10-18_c0dde7f0": "/uploads/pokemon-tcg-evee-evolution-v-set-chinese-nm-2026-10-18-c0dde7f0-f4b9d46ddf.jpg"
+    }
   },
   {
     "id": "pokemon-tcg-evee-evolution-ex-set-chinese-nm",
@@ -102,16 +107,21 @@
     "price_gbp": 14,
     "condition": "Very good",
     "category": "Trading card lots",
-    "image": "/images/lot-bulk-commons.svg",
+    "image": "/uploads/pokemon-tcg-evee-evolution-ex-set-chinese-nm-2026-10-18-668a62c1-b75e6494f5.jpg",
     "images": [
-      "/images/lot-bulk-commons.svg"
+      "/uploads/pokemon-tcg-evee-evolution-ex-set-chinese-nm-2026-10-18-668a62c1-b75e6494f5.jpg",
+      "/uploads/pokemon-tcg-evee-evolution-ex-set-chinese-nm-2026-10-18-11ff05b0-f402daf4f9.jpg"
     ],
     "stock": 1,
     "added_at": "2026-10-18T00:00:00.000Z",
     "photo_files": [
       "2026-10-18_668a62c1",
       "2026-10-18_11ff05b0"
-    ]
+    ],
+    "photo_map": {
+      "2026-10-18_668a62c1": "/uploads/pokemon-tcg-evee-evolution-ex-set-chinese-nm-2026-10-18-668a62c1-b75e6494f5.jpg",
+      "2026-10-18_11ff05b0": "/uploads/pokemon-tcg-evee-evolution-ex-set-chinese-nm-2026-10-18-11ff05b0-f402daf4f9.jpg"
+    }
   },
   {
     "id": "pokemon-tcg-gx-ex-v-mixed-bundled-chinese-nm",
