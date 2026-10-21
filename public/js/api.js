@@ -35,6 +35,19 @@ function applyPageBackground(url) {
     root.classList.remove('has-page-bg');
   }
 }
+// ---- Nav brand: shop logo (admin "Shop logo", default /images/logo.png) + shop name ----
+function applyBrand(s) {
+  if (!s) return;
+  const okUrl = (u) => typeof u === 'string' && /^(https?:\/\/|\/)[^"'()\s\\<>]*$/i.test(u);
+  if (okUrl(s.logo_image)) {
+    document.querySelectorAll('[data-shop-logo]').forEach((img) => {
+      if (img.getAttribute('src') !== s.logo_image) img.setAttribute('src', s.logo_image);
+    });
+  }
+  if (s.shop_name) document.querySelectorAll('[data-shop-name]').forEach((el) => { el.textContent = s.shop_name; });
+}
+try { applyBrand(JSON.parse(localStorage.getItem('brand') || 'null')); } catch { /* ignore */ }
+
 (function initPageBackground() {
   let cached = null;
   try { cached = localStorage.getItem('pageBg'); } catch { /* private mode */ }
@@ -46,8 +59,10 @@ function applyPageBackground(url) {
       const url = s.background_image || '';
       applyPageBackground(url);
       try { localStorage.setItem('pageBg', url); } catch { /* ignore */ }
+      applyBrand(s);
+      try { localStorage.setItem('brand', JSON.stringify({ logo_image: s.logo_image, shop_name: s.shop_name })); } catch { /* ignore */ }
     })
     .catch(() => {});
 })();
 
-window.TCG = { api, formatGbp, applyPageBackground };
+window.TCG = { api, formatGbp, applyPageBackground, applyBrand };

@@ -23,17 +23,48 @@ async function showModeBanner() {
   }
 }
 
+// Banner: the uploaded image is shown as an <img> at its natural aspect ratio (whole picture,
+// full colour, no overlay). The shop name/tagline stay in the page as a (visually hidden) h1
+// unless the admin turns on "Show shop name over banner".
+function applyHero(s) {
+  const hero = $('hero-banner');
+  const img = $('hero-img');
+  const url = s.banner_image || '';
+  const okUrl = /^(https?:\/\/|\/)[^"'()\s\\<>]*$/i.test(url);
+  hero.classList.toggle('has-image', okUrl);
+  img.hidden = !okUrl;
+  if (okUrl) {
+    if (s.ratio) img.style.aspectRatio = s.ratio;
+    if (img.getAttribute('src') !== url) img.setAttribute('src', url);
+  } else {
+    img.removeAttribute('src');
+  }
+  hero.classList.toggle('show-text', Boolean(s.show_banner_text));
+}
+
 async function showHero() {
+  let cached = null;
+  try { cached = JSON.parse(localStorage.getItem('hero') || 'null'); } catch { /* ignore */ }
+  if (cached) applyHero(cached);
+  const img = $('hero-img');
+  img.addEventListener('load', () => {
+    if (!img.naturalWidth) return;
+    const ratio = `${img.naturalWidth} / ${img.naturalHeight}`;
+    img.style.aspectRatio = ratio;
+    try {
+      const c = JSON.parse(localStorage.getItem('hero') || '{}');
+      if (c.banner_image === img.getAttribute('src')) localStorage.setItem('hero', JSON.stringify({ ...c, ratio }));
+    } catch { /* ignore */ }
+  });
   try {
     const s = await api('/api/settings');
     $('hero-name').textContent = s.shop_name || 'Po-ke Mart Fun';
     $('hero-tagline').textContent = s.tagline || '';
     $('hero-tagline').hidden = !s.tagline;
-    const hero = $('hero-banner');
-    if (s.banner_image) {
-      hero.style.setProperty('--hero-image', `url("${encodeURI(s.banner_image)}")`);
-      hero.classList.add('has-image');
-    }
+    const next = { banner_image: s.banner_image || '', show_banner_text: Boolean(s.show_banner_text) };
+    if (cached && cached.banner_image === next.banner_image) next.ratio = cached.ratio;
+    applyHero(next);
+    try { localStorage.setItem('hero', JSON.stringify(next)); } catch { /* ignore */ }
   } catch { /* keep defaults */ }
 }
 

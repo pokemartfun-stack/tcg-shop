@@ -175,9 +175,14 @@
     const pv = $('#banner-preview');
     pv.textContent = (f.shop_name.value || 'Po-ke Mart Fun') + (f.tagline.value ? ' — ' + f.tagline.value : '');
     const url = f.banner_image.value.trim();
+    const showText = f.show_banner_text.checked;
+    pv.classList.toggle('no-text', !showText);
+    // no tint unless the text is shown (matches the shop)
     pv.style.backgroundImage = /^(https?:\/\/|\/)[^"'()\s\\]*$/i.test(url)
-      ? `linear-gradient(90deg,#000a,#0003),url("${encodeURI(url)}")`
+      ? (showText ? `linear-gradient(90deg,#0009,#0000 70%),url("${encodeURI(url)}")` : `url("${encodeURI(url)}")`)
       : '';
+    const nm = $('#logo-nav-name');
+    if (nm) nm.textContent = f.shop_name.value || 'Po-ke Mart Fun';
   }
 
   async function loadSettings() {
@@ -186,6 +191,8 @@
     f.shop_name.value = st.shop_name || '';
     f.tagline.value = st.tagline || '';
     f.banner_image.value = st.banner_image || '';
+    f.show_banner_text.checked = Boolean(st.show_banner_text);
+    previewLogo(st.logo_image || '/images/logo.png');
     previewBanner();
     previewBackground(st.background_image || '');
   }
@@ -261,6 +268,49 @@
 
   $('#settings-form').addEventListener('input', previewBanner);
 
+  // ---- Shop logo (stored as /images/logo.png, or logo.gif, in the repo; favicon follows) ----
+  function previewLogo(url) {
+    const ok = /^(https?:\/\/|\/|blob:)[^"'()\s\\<>]*$/i.test(url || '');
+    if (!ok) return;
+    $('#logo-preview').src = url;
+    $('#logo-nav-demo').src = url;
+  }
+  function logoResult(text, ok) {
+    const el = $('#logo-result');
+    el.textContent = text || '';
+    el.className = 'result ' + (ok ? 'ok' : 'err');
+  }
+  async function uploadLogo(file) {
+    if (!file) return;
+    const problem = siteImgProblem(file);
+    if (problem) return logoResult(problem);
+    if (!/\.hei[cf]$/i.test(file.name)) previewLogo(URL.createObjectURL(file));
+    logoResult('Uploading logo…', true);
+    const fd = new FormData();
+    fd.append('logo', file, file.name);
+    try {
+      const d = await api('POST', '/settings/logo', fd);
+      previewLogo(d.settings.logo_image);
+      logoResult(`Logo saved (${Math.round(d.bytes / 1024)} KB${gifNote(d)}) + browser tab icon updated` + syncNote(d) + ' — live on the shop now.', !d.githubError);
+    } catch (err) {
+      logoResult('Logo upload failed: ' + err.message);
+      loadSettings().catch(() => {});
+    }
+  }
+  $('#logo-file').addEventListener('change', (e) => { uploadLogo(e.target.files[0]); e.target.value = ''; });
+  const ldrop = $('#logo-drop');
+  ['dragenter', 'dragover'].forEach((ev) => ldrop.addEventListener(ev, (e) => { e.preventDefault(); ldrop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach((ev) => ldrop.addEventListener(ev, (e) => { e.preventDefault(); ldrop.classList.remove('over'); }));
+  ldrop.addEventListener('drop', (e) => uploadLogo([...(e.dataTransfer.files || [])].find((f) => SITE_IMG.test(f.name)) || e.dataTransfer.files[0]));
+  $('#logo-reset').addEventListener('click', async () => {
+    if (!confirm('Go back to the default Poke Mart logo?')) return;
+    try {
+      const d = await api('DELETE', '/settings/logo');
+      previewLogo(d.settings.logo_image);
+      logoResult('Default logo restored (browser tab icon too)' + syncNote(d), true);
+    } catch (err) { logoResult(err.message); }
+  });
+
   // ---- Banner image upload (stored as /images/banner.jpg, or banner.gif for GIFs, in the repo) ----
   function bannerResult(text, ok) {
     const el = $('#banner-result');
@@ -308,6 +358,7 @@
   $('#settings-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const body = Object.fromEntries(new FormData(e.target).entries());
+    body.show_banner_text = e.target.show_banner_text.checked; // unchecked boxes are not in FormData
     try {
       const d = await api('PUT', '/settings', body);
       msg('Banner saved' + syncNote(d), true);
