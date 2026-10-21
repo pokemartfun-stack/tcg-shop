@@ -49,6 +49,7 @@ async function toJpeg(buffer, originalName, opts = {}) {
       throw new Error(`${originalName}: could not read this HEIC photo (${err.message}). Export it as JPG and try again.`);
     }
   }
+  if (opts.decodeOnly) return input;
   try {
     return await sharp(input, { failOn: 'error' })
       .rotate() // respect EXIF orientation from phones
@@ -110,7 +111,7 @@ async function serveFromGitHub(req, res, next) {
 // copy can be older than the repo: with a token we therefore prefer the repo copy once per
 // process (tracked per file name), then serve the local cache.
 const MAX_GIF_BYTES = 8 * 1024 * 1024;
-const MIME = { jpg: 'image/jpeg', gif: 'image/gif' };
+const MIME = { jpg: 'image/jpeg', gif: 'image/gif', png: 'image/png' };
 
 function isGif(buffer, originalName) {
   return path.extname(String(originalName || '')).toLowerCase() === '.gif' ||
@@ -143,14 +144,27 @@ async function toGif(buffer, originalName, maxWidth) {
   return { data: out, frames, width: maxWidth, resized: true };
 }
 
-function siteImage(name, envVar, label, resize, quality, gifMaxWidth) {
-  const repoPath = (ext) => `public/images/${name}.${ext}`;
-  // BANNER_FILE / BACKGROUND_FILE (tests) name the .jpg; the .gif sits next to it.
-  const localFile = (ext = 'jpg') => {
-    const jpg = process.env[envVar] || path.join(__dirname, '..', 'public', 'images', `${name}.jpg`);
-    return ext === 'jpg' ? jpg : jpg.replace(/\.jpe?g$/i, '') + `.${ext}`;
+function siteImage(name, envVar, label, resize, quality, gifMaxWidth, opts = {}) {
+  const baseExt = opts.baseExt || 'jpg';
+  const relDir = opts.relDir || 'public/images';
+  const urlDir = relDir.replace(/^public/, '') || '';
+  const encode = opts.encode || ((buf, n) => toJpeg(buf, n, { resize, quality }));
+  const repoPath = (ext) => `${relDir}/${name}.${ext}`;
+  // BANNER_FILE / BACKGROUND_FILE / LOGO_FILE (tests) name the main file; the .gif sits next to it.
+  const localFile = (ext = baseExt) => {
+    const main = process.env[envVar] || path.join(__dirname, '..', ...relDir.split('/'), `${name}.${baseExt}`);
+    return ext === baseExt ? main : main.replace(/\.[a-z0-9]+$/i, '') + `.${ext}`;
   };
-  const fresh = { jpg: false, gif: false };
+  const fresh = {};
+
+  /** Write already-encoded bytes (e.g. a generated favicon) locally + commit to the repo. */
+  async function saveRaw(data, ext = baseExt) {
+    const file = localFile(ext);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, data);
+    fresh[ext] = true;
+    return sync.safePush(repoPath(ext), data, `Admin: ${label}`, true);
+  }
 
   async function save(buffer, originalName) {
     let data, ext, extra = {};
@@ -158,14 +172,14 @@ function siteImage(name, envVar, label, resize, quality, gifMaxWidth) {
       const g = await toGif(buffer, originalName, gifMaxWidth);
       data = g.data; ext = 'gif'; extra = { frames: g.frames, animated: g.frames > 1 };
     } else {
-      data = await toJpeg(buffer, originalName, { resize, quality }); ext = 'jpg';
+      data = await encode(buffer, originalName); ext = baseExt;
     }
     const file = localFile(ext);
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, data);
     fresh[ext] = true;
     const pushed = await sync.safePush(repoPath(ext), data, `Admin: ${label}${ext === 'gif' ? ' (GIF)' : ''}`, true);
-    return { url: `/images/${name}.${ext}?v=${Date.now()}`, path: `/images/${name}.${ext}`, ext, bytes: data.length, ...extra, ...pushed };
+    return { url: `${urlDir}/${name}.${ext}?v=${Date.now()}`, path: `${urlDir}/${name}.${ext}`, data, ext, bytes: data.length, ...extra, ...pushed };
   }
 
   /** Express handler factory: serve('jpg') for /images/<name>.jpg, serve('gif') for .gif */
@@ -200,9 +214,7 @@ function siteImage(name, envVar, label, resize, quality, gifMaxWidth) {
     };
   }
 
-  const serveJpg = serveExt('jpg');
-  const serveGif = serveExt('gif');
-  return { save, serve: serveJpg, serveGif, file: localFile, repoPath };
+  return { save, saveRaw, serve: serveExt(baseExt), serveGif: serveExt('gif'), file: localFile, repoPath };
 }
 
 const banner = siteImage('banner', 'BANNER_FILE', 'shop banner image',
@@ -210,6 +222,62 @@ const banner = siteImage('banner', 'BANNER_FILE', 'shop banner image',
 // Page background: whole image kept (no crop), max 2400px side; CSS scales it to cover.
 const background = siteImage('background', 'BACKGROUND_FILE', 'page background image',
   { width: 2400, height: 2400, fit: 'inside', withoutEnlargement: true }, 86, 2400);
+
+// Shop logo (nav bar): square 512px PNG (shown as a circle by CSS); GIFs stay animated.
+// Each upload also regenerates the favicon (64px circle PNG) from it.
+async function toLogoPng(buffer, originalName) {
+  if (!sharp) throw new Error('Image processing (sharp) is not installed on the server');
+  const input = await toJpeg(buffer, originalName, { decodeOnly: true }); // validates type, HEIC -> JPEG
+  try {
+    return await sharp(input, { failOn: 'error' }).rotate()
+      .resize(512, 512, { fit: 'cover', position: 'centre' })
+      .png({ palette: true, quality: 90, effort: 8 })
+      .toBuffer();
+  } catch (err) {
+    throw new Error(`${originalName}: not a readable image (${err.message})`);
+  }
+}
+
+async function faviconFrom(buffer) {
+  const size = 64;
+  const mask = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}"><circle cx="${size / 2}" cy="${size / 2}" r="${size / 2}" fill="#fff"/></svg>`);
+  return sharp(buffer, { animated: false }).resize(size, size, { fit: 'cover' })
+    .ensureAlpha().composite([{ input: mask, blend: 'dest-in' }]).png().toBuffer();
+}
+
+const logo = siteImage('logo', 'LOGO_FILE', 'shop logo', null, null, 512, { baseExt: 'png', encode: toLogoPng });
+const favicon = siteImage('favicon', 'FAVICON_FILE', 'favicon (from shop logo)', null, null, 64, { baseExt: 'png', relDir: 'public' });
+
+/** Save a new logo, then regenerate + commit the favicon from it. */
+async function saveLogo(buffer, originalName) {
+  const saved = await logo.save(buffer, originalName);
+  let fav = {};
+  try {
+    fav = await favicon.saveRaw(await faviconFrom(saved.data));
+  } catch (err) {
+    fav = { githubError: `favicon: ${err.message}` };
+  }
+  const githubError = saved.githubError || fav.githubError;
+  const { data: _omit, ...rest } = saved;
+  return { ...rest, github: Boolean(saved.github && fav.github), ...(githubError ? { githubError } : {}) };
+}
+// Bundled default logo: shipped in the repo, never overwritten by uploads.
+const DEFAULT_LOGO_URL = '/images/logo-default.png';
+function defaultLogoFile() {
+  return process.env.DEFAULT_LOGO_FILE || path.join(__dirname, '..', 'public', 'images', 'logo-default.png');
+}
+async function resetFaviconToDefault() {
+  try {
+    return await favicon.saveRaw(await faviconFrom(fs.readFileSync(defaultLogoFile())));
+  } catch (err) {
+    return { github: false, githubError: `favicon: ${err.message}` };
+  }
+}
+const serveLogo = logo.serve;
+const serveLogoGif = logo.serveGif;
+const serveFavicon = favicon.serve;
+const logoFile = logo.file;
+const faviconFile = favicon.file;
 
 const saveBanner = banner.save;
 const serveBanner = banner.serve;
@@ -230,4 +298,4 @@ function photoBase(id, photoStem) {
   return `${slugFull(id, 48)}-${slugFull(photoStem, 40)}`;
 }
 
-module.exports = { photoBase, slugFull, saveBanner, serveBanner, serveBannerGif, bannerFile, saveBackground, serveBackground, serveBackgroundGif, backgroundFile, toGif, isGif, MAX_GIF_BYTES, slugPart, savePhoto, toJpeg, baseName, stem, serveFromGitHub, uploadsDir, ALLOWED_EXT };
+module.exports = { DEFAULT_LOGO_URL, resetFaviconToDefault, saveLogo, serveLogo, serveLogoGif, serveFavicon, logoFile, faviconFile, toLogoPng, faviconFrom, photoBase, slugFull, saveBanner, serveBanner, serveBannerGif, bannerFile, saveBackground, serveBackground, serveBackgroundGif, backgroundFile, toGif, isGif, MAX_GIF_BYTES, slugPart, savePhoto, toJpeg, baseName, stem, serveFromGitHub, uploadsDir, ALLOWED_EXT };

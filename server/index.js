@@ -103,6 +103,10 @@ app.get('/admin', (_req, res) => res.sendFile(path.join(__dirname, '..', 'public
 // Banner: local file, else fetched from the GitHub repo after a restart.
 app.get('/images/banner.jpg', (req, res, next) => require('./images').serveBanner(req, res, next));
 app.get('/images/background.jpg', (req, res, next) => require('./images').serveBackground(req, res, next));
+// Shop logo (+ favicon regenerated from it): same local-then-repo logic.
+app.get('/images/logo.png', (req, res, next) => require('./images').serveLogo(req, res, next));
+app.get('/images/logo.gif', (req, res, next) => require('./images').serveLogoGif(req, res, next));
+app.get('/favicon.png', (req, res, next) => require('./images').serveFavicon(req, res, next));
 // Animated GIF uploads of the same two images (kept as GIF so they stay animated).
 app.get('/images/banner.gif', (req, res, next) => require('./images').serveBannerGif(req, res, next));
 app.get('/images/background.gif', (req, res, next) => require('./images').serveBackgroundGif(req, res, next));

@@ -125,6 +125,32 @@ router.post('/settings/banner', (req, res, next) => multipart([{ name: 'banner',
   }
 });
 
+// Shop logo upload (multipart field "logo"): public/images/logo.png (or logo.gif) + favicon, + repo.
+router.post('/settings/logo', (req, res, next) => multipart([{ name: 'logo', maxCount: 1 }])(req, res, next), async (req, res) => {
+  try {
+    const f = req.files && req.files.logo && req.files.logo[0];
+    if (!f) return res.status(400).json({ error: 'Choose a logo image (JPG, PNG, WebP, HEIC or GIF)' });
+    const saved = await images.saveLogo(fs.readFileSync(f.path), f.originalname);
+    const r = await settings.update({ logo_image: saved.url });
+    if (r.error) return res.status(400).json({ error: r.error });
+    const githubError = saved.githubError || r.githubError;
+    res.json({ settings: r.settings, bytes: saved.bytes, format: saved.ext, ...(saved.frames ? { frames: saved.frames, animated: saved.animated } : {}), github: Boolean(saved.github && r.github), ...(githubError ? { githubError } : {}) });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  } finally {
+    cleanupFiles(req);
+  }
+});
+
+// Back to the bundled default logo (public/images/logo-default.png, never overwritten by uploads);
+// the favicon is regenerated from it too.
+router.delete('/settings/logo', async (_req, res) => {
+  const fav = await images.resetFaviconToDefault();
+  const r = await settings.update({ logo_image: images.DEFAULT_LOGO_URL });
+  const githubError = fav.githubError || r.githubError;
+  res.json({ ...r, github: Boolean(fav.github && r.github), ...(githubError ? { githubError } : {}) });
+});
+
 // Page background upload (multipart field "background"): public/images/background.jpg (or .gif) + repo.
 router.post('/settings/background', (req, res, next) => multipart([{ name: 'background', maxCount: 1 }])(req, res, next), async (req, res) => {
   try {

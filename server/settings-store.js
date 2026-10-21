@@ -14,6 +14,10 @@ const DEFAULTS = {
   background_image: '/images/background.jpg',
   // last uploaded background file (jpg or gif), used by "Use saved background again"
   background_last: '/images/background.jpg',
+  // nav-bar logo (shown as a circle); also the source of the favicon
+  logo_image: '/images/logo.png',
+  // big shop name + tagline over the banner; off because banner art usually has its own lettering
+  show_banner_text: false,
 };
 
 function filePath() {
@@ -53,6 +57,16 @@ function validate(input) {
     if (v && !/^(https?:\/\/|\/)/i.test(v)) return { error: 'Background image must be an https:// URL or /path (or blank)' };
     if (/["'()\\\s]/.test(v)) return { error: 'Background image URL contains invalid characters' };
     out.background_image = v;
+  }
+  if (input.logo_image !== undefined) {
+    const v = String(input.logo_image).trim() || '/images/logo.png';
+    if (!/^(https?:\/\/|\/)/i.test(v)) return { error: 'Logo image must be an https:// URL or /path' };
+    if (/["'()\\\s<>]/.test(v)) return { error: 'Logo image URL contains invalid characters' };
+    out.logo_image = v;
+  }
+  if (input.show_banner_text !== undefined) {
+    const v = input.show_banner_text;
+    out.show_banner_text = v === true || v === 'true' || v === 'on' || v === '1' || v === 1;
   }
   if (input.background_last !== undefined) {
     const v = String(input.background_last).trim();
