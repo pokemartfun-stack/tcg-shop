@@ -110,6 +110,8 @@ app.get('/favicon.png', (req, res, next) => require('./images').serveFavicon(req
 // Animated GIF uploads of the same two images (kept as GIF so they stay animated).
 app.get('/images/banner.gif', (req, res, next) => require('./images').serveBannerGif(req, res, next));
 app.get('/images/background.gif', (req, res, next) => require('./images').serveBackgroundGif(req, res, next));
+// Customer pages: HTML with the current banner / background / logo already filled in.
+app.use(require('./page-render').handler);
 app.use(express.static(path.join(__dirname, '..', 'public')));
 // Uploaded photos: local disk (UPLOADS_DIR or public/uploads), then GitHub fallback after a restart.
 const images = require('./images');
