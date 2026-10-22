@@ -1,5 +1,12 @@
 (function () {
   const $ = (s) => document.querySelector(s);
+  const CAT = window.TCGCategories;
+  // Category dropdown for a card row: the 4 shop categories, grouped by the shop tab they appear in.
+  function catOptions(current) {
+    const cur = CAT.normaliseCategory(current);
+    return CAT.TABS.map((t) => `<optgroup label="${esc(t.label)} tab">${t.categories.map((c) =>
+      `<option${c === cur ? ' selected' : ''}>${esc(c)}</option>`).join('')}</optgroup>`).join('');
+  }
   let token = sessionStorage.getItem('adminToken') || '';
 
   function msg(text, ok) {
@@ -73,7 +80,8 @@
           <label class="btnlike" style="font-size:12px;cursor:pointer;color:#60a5fa">Upload photo(s)<input type="file" multiple data-act="addimg" accept="image/jpeg,image/png,image/webp,.heic,.heif,.jpg,.jpeg,.png,.webp" /></label>
         </td>
         <td>${esc(p.id)}</td>
-        <td>${esc(p.title)} ${p.stock < 1 ? '<span class="oos">OUT OF STOCK</span>' : ''}<br><small>${esc(p.condition)} · ${esc(p.category)}</small></td>
+        <td>${esc(p.title)} ${p.stock < 1 ? '<span class="oos">OUT OF STOCK</span>' : ''}<br><small>${esc(p.condition)}</small>
+          <br><select class="cat" data-f="category" aria-label="Category (shop tab)" title="Category — decides the shop tab">${catOptions(p.category)}</select></td>
         <td><input class="small" type="number" step="0.01" min="0" data-f="price_gbp" value="${p.price_gbp}" /></td>
         <td><input class="small" type="number" step="1" min="0" data-f="stock" value="${p.stock}" /></td>
         <td class="stockctl">
@@ -152,9 +160,10 @@
         const body = {
           price_gbp: Number(tr.querySelector('[data-f=price_gbp]').value),
           stock: Number(tr.querySelector('[data-f=stock]').value),
+          category: tr.querySelector('[data-f=category]').value,
         };
         const d = await api('PATCH', '/products/' + encodeURIComponent(id), body);
-        msg('Updated ' + id + ' (£' + d.product.price_gbp.toFixed(2) + ', ' + d.product.stock + ' in stock)' + syncNote(d), true);
+        msg('Updated ' + id + ' (£' + d.product.price_gbp.toFixed(2) + ', ' + d.product.stock + ' in stock, ' + d.product.category + ')' + syncNote(d), true);
       }
       await render();
     } catch (err) { msg(err.message); }

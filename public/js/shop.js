@@ -1,8 +1,12 @@
 (function () {
 const { api, formatGbp } = window.TCG;
+const CAT = window.TCGCategories;
 
 let ALL = [];
+// Current shop section (tab): from ?tab=… so links like /?tab=sealed open the right tab.
+let TAB = CAT.parseTab(new URLSearchParams(location.search).get('tab'));
 const $ = (id) => document.getElementById(id);
+const inTab = () => CAT.productsInTab(ALL, TAB);
 
 async function showModeBanner() {
   const cfg = await api('/api/config');
@@ -101,7 +105,9 @@ function readFilters() {
 
 function applyFilters() {
   const f = readFilters();
-  let list = ALL.filter((p) => {
+  const tab = CAT.getTab(TAB);
+  const pool = inTab();
+  let list = pool.filter((p) => {
     if (f.q && !(`${p.title} ${p.description || ''}`.toLowerCase().includes(f.q))) return false;
     if (f.category && p.category !== f.category) return false;
     if (f.condition && p.condition !== f.condition) return false;
@@ -119,10 +125,13 @@ function applyFilters() {
   list = list.slice().sort(sorters[f.sort] || sorters.newest);
 
   const grid = $('product-grid');
-  $('f-count').textContent = `Showing ${list.length} of ${ALL.length} card${ALL.length === 1 ? '' : 's'}`;
+  const noun = `${tab.noun}${pool.length === 1 ? '' : 's'}`;
+  $('f-count').textContent = pool.length ? `Showing ${list.length} of ${pool.length} ${noun} in ${tab.label}` : '';
   grid.innerHTML = list.length
     ? list.map(cardHtml).join('')
-    : '<p class="empty">No cards match those filters. <button type="button" class="linkish" data-clear>Clear filters</button></p>';
+    : !pool.length
+      ? `<div class="empty empty-tab"><span class="empty-ball" aria-hidden="true"></span><p class="empty-title">${escapeHtml(tab.empty)}</p><p>Meanwhile, have a look at our <a href="/?tab=cards" data-tab="cards">Cards &amp; Lots</a>.</p></div>`
+      : `<p class="empty">No ${tab.noun}s match those filters. <button type="button" class="linkish" data-clear>Clear filters</button></p>`;
   const c = grid.querySelector('[data-clear]');
   if (c) c.addEventListener('click', clearFilters);
 }
@@ -138,18 +147,61 @@ function clearFilters() {
   applyFilters();
 }
 
-async function loadProducts() {
-  ALL = (await api('/api/products')).map((p, i) => ({ ...p, _i: i }));
+// Tabs: highlight the current one, show product counts, and fit the Type / Condition
+// dropdowns to the products in this tab (Type = singles vs lots, only in Cards & Lots).
+function refreshTabUi() {
+  const tab = CAT.getTab(TAB);
+  document.querySelectorAll('#shop-tabs [data-tab]').forEach((a) => {
+    const on = a.getAttribute('data-tab') === TAB;
+    a.classList.toggle('active', on);
+    if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+  });
+  CAT.TABS.forEach((t) => {
+    const el = document.querySelector(`[data-tab-count="${t.id}"]`);
+    if (el) el.textContent = ALL.length ? String(CAT.productsInTab(ALL, t.id).length) : '';
+  });
+  const pool = inTab();
+  const catSel = $('f-category');
+  const curCat = catSel.value;
+  $('f-category-wrap').hidden = tab.categories.length < 2;
+  catSel.innerHTML = '<option value="">All</option>' + tab.categories.map((c) => `<option>${escapeHtml(c)}</option>`).join('');
+  catSel.value = tab.categories.includes(curCat) ? curCat : '';
   const sel = $('f-condition');
   const current = sel.value;
-  const conditions = [...new Set(ALL.map((p) => p.condition).filter(Boolean))].sort();
+  const conditions = [...new Set(pool.map((p) => p.condition).filter(Boolean))].sort();
   sel.innerHTML = '<option value="">All</option>' +
     conditions.map((c) => `<option>${escapeHtml(c)}</option>`).join('');
   sel.value = conditions.includes(current) ? current : '';
+  $('f-search').placeholder = `Search ${tab.label}…`;
+}
+
+function setTab(id, push) {
+  TAB = CAT.parseTab(id);
+  if (push) {
+    const url = new URL(location.href);
+    if (TAB === CAT.DEFAULT_TAB) url.searchParams.delete('tab'); else url.searchParams.set('tab', TAB);
+    history.pushState({ tab: TAB }, '', url.pathname + url.search + url.hash);
+  }
+  refreshTabUi();
+  applyFilters();
+}
+
+async function loadProducts() {
+  ALL = (await api('/api/products')).map((p, i) => ({ ...p, _i: i }));
+  refreshTabUi();
   applyFilters();
 }
 
 function wire() {
+  // Tabs are real links (work without JS / can be shared); with JS they switch instantly.
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest('a[data-tab]');
+    if (!a || e.ctrlKey || e.metaKey || e.shiftKey || e.button > 0) return;
+    e.preventDefault();
+    setTab(a.getAttribute('data-tab'), true);
+    if (!a.closest('#shop-tabs')) $('shop-tabs').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  });
+  window.addEventListener('popstate', () => setTab(new URLSearchParams(location.search).get('tab'), false));
   ['f-search', 'f-min', 'f-max'].forEach((id) => $(id).addEventListener('input', applyFilters));
   ['f-category', 'f-condition', 'f-sort', 'f-instock'].forEach((id) => $(id).addEventListener('change', applyFilters));
   $('f-clear').addEventListener('click', clearFilters);
@@ -266,6 +318,7 @@ function escapeHtml(s) {
 
 document.addEventListener('DOMContentLoaded', async () => {
   wire();
+  refreshTabUi();
   showHero();
   await showModeBanner();
   await loadProducts();
