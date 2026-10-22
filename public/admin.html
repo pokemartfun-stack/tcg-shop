@@ -20,6 +20,7 @@
     .admin .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
     .admin .grid label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
     .admin .small { width: 80px; }
+    .admin select.cat { margin-top: 4px; max-width: 220px; }
     .admin button { cursor: pointer; padding: 6px 12px; border-radius: 6px; border: 0; background: #2563eb; color: #fff; }
     .admin button.danger { background: #dc2626; }
     .admin button.ghost { background: #6b7280; }
@@ -194,22 +195,25 @@
       </section>
 
       <section>
-        <h2>Add a card</h2>
+        <h2>Add a product</h2>
+        <p class="hint">Pick the <strong>Category</strong> to choose the shop tab: Trading cards / Trading card lots → <em>Cards &amp; Lots</em>, Sealed products → <em>Sealed Products</em>, Accessories &amp; Merch → <em>Accessories &amp; Merch</em>.</p>
         <form id="add-form" class="grid">
           <label>ID (e.g. pikachu-151)<input name="id" required pattern="[A-Za-z0-9][A-Za-z0-9_\-]*" /></label>
           <label>Title<input name="title" required /></label>
           <label>Price £<input name="price_gbp" type="number" step="0.01" min="0" required /></label>
           <label>Stock<input name="stock" type="number" step="1" min="0" value="1" required /></label>
           <label>Condition
-            <select name="condition"><option>Near mint</option><option>Lightly played</option><option>Moderately played</option><option>Heavily played</option><option>Damaged</option></select>
+            <select name="condition"><option>Near mint</option><option>Lightly played</option><option>Moderately played</option><option>Heavily played</option><option>Damaged</option><option>New</option><option>New (sealed)</option></select>
           </label>
           <label>Category
-            <select name="category"><option>Trading cards</option><option>Trading card lots</option></select>
+            <select name="category" id="add-category">
+              <option>Trading cards</option><option>Trading card lots</option><option>Sealed products</option><option>Accessories &amp; Merch</option>
+            </select>
           </label>
           <label>Image URL (optional)<input name="image" placeholder="https://..." /></label>
           <label>Photos (optional, several allowed)<input name="photos" type="file" multiple accept="image/jpeg,image/png,image/webp,.heic,.heif,.jpg,.jpeg,.png,.webp" /></label>
           <label style="grid-column: 1 / -1">Description<textarea name="description" rows="2"></textarea></label>
-          <div><button type="submit">Add card</button></div>
+          <div><button type="submit">Add product</button></div>
         </form>
       </section>
 
@@ -219,12 +223,13 @@
         <button type="button" id="fix-order" title="Sort every card's photos by the order in your Vinted JSON (photo first)">Fix photo order</button>
         <span class="hint">★ = set as cover, ◀ ▶ = reorder. The cover is the photo shown in the shop.</span>
         <table>
-          <thead><tr><th>Photos</th><th>ID</th><th>Title</th><th>Price £</th><th>Quantity</th><th>Quick restock</th><th></th></tr></thead>
+          <thead><tr><th>Photos</th><th>ID</th><th>Title / category</th><th>Price £</th><th>Quantity</th><th>Quick restock</th><th></th></tr></thead>
           <tbody id="rows"></tbody>
         </table>
       </section>
     </div>
   </main>
+  <script src="/js/categories.js"></script>
   <script src="/js/admin.js"></script>
 </body>
 </html>
