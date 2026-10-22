@@ -4,7 +4,7 @@
 const store = require('./products-store');
 const { stem, baseName } = require('./images');
 
-const KNOWN_CATEGORIES = ['Trading cards', 'Trading card lots'];
+const { normaliseCategory } = require('../public/js/categories');
 
 function slugify(s) {
   return String(s || '')
@@ -22,11 +22,13 @@ function parsePrice(v) {
   return Number(cleaned);
 }
 
+/**
+ * Vinted "Hobbies & Collectables > Trading cards" -> "Trading cards"; sealed / accessory words
+ * ("Booster box", "Card sleeves" ...) -> "Sealed products" / "Accessories"; anything else ->
+ * "Trading cards" (so it shows in the Cards & Lots tab).
+ */
 function mapCategory(v) {
-  const last = String(v || '').split('>').pop().trim();
-  if (!last) return 'Trading cards';
-  const known = KNOWN_CATEGORIES.find((c) => c.toLowerCase() === last.toLowerCase());
-  return known || last;
+  return normaliseCategory(v);
 }
 
 function parseDate(v) {

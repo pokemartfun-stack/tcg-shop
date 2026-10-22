@@ -7,6 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const settingsStore = require('./settings-store');
 const images = require('./images');
+const { parseTab } = require('../public/js/categories');
 
 let sharp = null;
 try { sharp = require('sharp'); } catch { /* ratio is optional */ }
@@ -46,8 +47,16 @@ async function bannerRatio(url) {
 }
 
 /** Pure HTML transform (exported for tests). */
-function render(html, s, ratio) {
+function render(html, s, ratio, opts = {}) {
   let out = html;
+  // Shop tabs: mark the tab from ?tab=… as current, so /?tab=sealed paints the right tab first.
+  if (out.includes('id="shop-tabs"')) {
+    const tab = parseTab(opts.tab);
+    out = out.replace(/<a class="shop-tab[^"]*" href="([^"]*)" data-tab="([a-z]+)"(?: aria-current="page")?>/g,
+      (_m, href, id) => id === tab
+        ? `<a class="shop-tab active" href="${href}" data-tab="${id}" aria-current="page">`
+        : `<a class="shop-tab" href="${href}" data-tab="${id}">`);
+  }
   // Page background: class + CSS variable on <html>, so the first paint already has it.
   if (okUrl(s.background_image)) {
     out = out.replace('<html lang="en-GB">',
@@ -80,7 +89,7 @@ async function handler(req, res, next) {
   if (!file || (req.method !== 'GET' && req.method !== 'HEAD')) return next();
   try {
     const s = settingsStore.get();
-    const html = render(template(file), s, await bannerRatio(s.banner_image));
+    const html = render(template(file), s, await bannerRatio(s.banner_image), { tab: req.query && req.query.tab });
     res.setHeader('Content-Type', 'text/html; charset=UTF-8');
     res.setHeader('Cache-Control', 'no-cache'); // always revalidate: settings can change any time
     res.end(req.method === 'HEAD' ? undefined : html);

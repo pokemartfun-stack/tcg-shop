@@ -3,6 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const sync = require('./github-sync');
+const { normaliseCategory } = require('../public/js/categories');
 
 const DEFAULT_PATH = path.join(__dirname, '..', 'data', 'products.json');
 const REPO_FILE = 'data/products.json';
@@ -51,7 +52,7 @@ function normalise(p, idx = 0) {
     description: String(p.description || '').trim(),
     price_gbp: Math.round(price * 100) / 100,
     condition: String(p.condition || 'Near mint').trim(),
-    category: String(p.category || 'Trading cards').trim(),
+    category: normaliseCategory(p.category), // one of the 4 shop categories (decides the shop tab)
     image,
     images,
     stock,
