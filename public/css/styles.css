@@ -548,3 +548,76 @@ html.has-page-bg .site-footer { border-top-color: rgba(255, 255, 255, 0.12); }
   .nav { gap: 0.15rem; flex-wrap: nowrap; }
   .nav a, .nav button.linkish { padding: 0.35rem 0.4rem; font-size: 0.9rem; }
 }
+
+/* ======================================================================
+   Shop sections: Cards & Lots / Sealed Products / Accessories & Merch.
+   Navy tabs with a Poké Ball icon; the current tab is Pokémon yellow
+   with a red edge. On phones the three tabs share the width and long
+   labels wrap onto two lines instead of overflowing.
+   ====================================================================== */
+.shop-tabs {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem;
+  margin-top: 1rem;
+}
+.shop-tab {
+  display: flex; align-items: center; justify-content: center; gap: 0.55rem;
+  min-height: 3.2rem; padding: 0.55rem 0.9rem; text-align: center; text-decoration: none;
+  border-radius: 14px; border: 2px solid rgba(255, 255, 255, 0.14);
+  background: linear-gradient(180deg, rgba(29, 44, 94, 0.95) 0%, rgba(17, 22, 40, 0.95) 100%);
+  color: #d5dcef; box-shadow: 0 3px 0 #0b0b0f;
+  font-family: var(--font-display); font-weight: 400; font-size: 1.15rem; letter-spacing: 0.04em; line-height: 1.1;
+  transition: transform 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.shop-tab .tab-label { padding-top: 0.12em; /* display font sits high */ }
+.shop-tab:hover { color: var(--poke-yellow); border-color: var(--poke-yellow); transform: translateY(-1px); }
+.shop-tab:focus-visible { outline: 3px solid var(--poke-yellow); outline-offset: 2px; }
+.shop-tab.active {
+  background: var(--poke-yellow); color: var(--poke-navy);
+  border-color: var(--poke-red); box-shadow: 0 3px 0 var(--poke-red), 0 6px 16px rgba(0, 0, 0, 0.35);
+}
+.tab-icon { /* mini Poké Ball */
+  flex: none; width: 1.15rem; height: 1.15rem; border-radius: 50%; border: 2px solid #111;
+  background: radial-gradient(circle, #fff 0 20%, #111 21% 32%, transparent 33%),
+              linear-gradient(180deg, var(--poke-red) 0 46%, #111 46% 54%, #fff 54%);
+}
+.shop-tab:not(.active) .tab-icon { filter: saturate(0.6) brightness(0.9); }
+.tab-count {
+  flex: none; min-width: 1.6rem; padding: 0.1rem 0.45rem; border-radius: 999px;
+  font-family: system-ui, sans-serif; font-size: 0.78rem; font-weight: 800; letter-spacing: 0;
+  background: rgba(255, 255, 255, 0.12); color: inherit;
+}
+.tab-count:empty { display: none; }
+.shop-tab.active .tab-count { background: var(--poke-navy); color: var(--poke-yellow); }
+#f-category-wrap[hidden] { display: none; }
+
+/* Empty tab ("No sealed products yet — check back soon") */
+.empty-tab {
+  display: flex; flex-direction: column; align-items: center; gap: 0.6rem;
+  grid-column: 1 / -1; padding: 2.5rem 1rem; border-radius: var(--radius);
+  background: rgba(26, 29, 39, 0.88); border: 2px dashed rgba(255, 203, 5, 0.45);
+}
+.empty-tab p { margin: 0; }
+.empty-tab .empty-title {
+  font-family: var(--font-display); font-size: clamp(1.15rem, 3vw, 1.6rem); letter-spacing: 0.03em;
+  color: var(--poke-yellow); -webkit-text-stroke: 4px var(--poke-blue); paint-order: stroke fill;
+  text-shadow: 2px 3px 0 var(--poke-navy);
+}
+.empty-tab a { color: var(--poke-yellow); font-weight: 700; }
+.empty-ball {
+  width: 3rem; height: 3rem; border-radius: 50%; border: 3px solid #111; box-shadow: 0 3px 0 #111;
+  background: radial-gradient(circle, #fff 0 18%, #111 19% 30%, transparent 31%),
+              linear-gradient(180deg, var(--poke-red) 0 46%, #111 46% 54%, #fff 54%);
+  animation: empty-wobble 2.4s ease-in-out infinite;
+}
+@keyframes empty-wobble { 0%, 70%, 100% { transform: rotate(0); } 78% { transform: rotate(-14deg); } 86% { transform: rotate(12deg); } 94% { transform: rotate(-6deg); } }
+@media (prefers-reduced-motion: reduce) { .empty-ball { animation: none; } }
+
+@media (max-width: 640px) {
+  .shop-tabs { gap: 0.35rem; }
+  .shop-tab {
+    flex-direction: column; gap: 0.25rem; min-height: 4.4rem; padding: 0.45rem 0.3rem;
+    font-size: 0.86rem; border-radius: 12px; overflow-wrap: anywhere;
+  }
+  .tab-icon { width: 1rem; height: 1rem; }
+  .tab-count { font-size: 0.7rem; padding: 0 0.4rem; }
+}
