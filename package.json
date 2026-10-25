@@ -1,18 +1,19 @@
 {
   "name": "tcg-shop",
   "version": "1.0.0",
-  "description": "UK TCG card shop \u2014 listings, cart, Stripe + PayPal checkout",
+  "description": "UK TCG card shop — listings, cart, Stripe + PayPal checkout",
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
     "dev": "node server/index.js",
-    "test": "node --test test/cart.test.js test/products.test.js test/auth.test.js test/admin.test.js test/stock.test.js test/import-photos.test.js test/github-sync.test.js test/photo-order.test.js test/page-render.test.js test/categories.test.js"
+    "test": "node --test test/cart.test.js test/products.test.js test/auth.test.js test/admin.test.js test/stock.test.js test/import-photos.test.js test/github-sync.test.js test/photo-order.test.js test/page-render.test.js test/categories.test.js test/postage.test.js test/sales.test.js test/orders-store.test.js"
   },
   "engines": {
     "node": ">=18"
   },
   "dependencies": {
     "dotenv": "^16.4.5",
+    "exceljs": "^4.4.0",
     "express": "^4.21.0",
     "heic-convert": "^2.1.0",
     "multer": "^2.4.0",

@@ -178,6 +178,56 @@ The image behind every customer page (shop, cart, checkout, success) is `public/
 
 In `/admin → Page background`, **Upload page background** (JPG, PNG, WebP or HEIC) keeps the whole image, uncropped, resizes it to a maximum of 2400 px on the longest side, and saves it at `public/images/background.jpg`. With `GITHUB_TOKEN` set, it's committed to the same path with `[skip render]`. The setting `background_image` in `data/settings.json` becomes `/images/background.jpg?v=<timestamp>`. **Remove background** sets it to blank, which gives a plain dark page. **Use saved background again** turns the image back on. Restarts are handled the same way as the banner.
 
+## Postage (Royal Mail Tracked 48)
+
+- Every order goes out as **one** Royal Mail Tracked 48 item and is charged **once**, at the price of the
+  largest size in the basket (`server/postage.js`). The server always calculates postage and the order
+  total itself: cart, checkout, Stripe (added as a shipping option), PayPal (`/api/checkout/quote`) and demo orders.
+- Sizes: **Large Letter** (max 1kg, 35.3 × 25 × 2.5 cm) and **Small Parcel** (max 2kg, 45 × 35 × 16 cm).
+  Default prices are Royal Mail's online Tracked 48 prices from 5 October 2026 (£2.90 / £3.75,
+  https://www.royalmail.com/sending/uk/tracked-48). Change them under **Admin → Postage**, where you can also
+  switch on "free postage over £X" (off by default). Saved in `data/settings.json` (`postage`) and synced to GitHub.
+- Each product has `postage_band`. The Vinted import maps `postage_size`: Small → Large Letter, Medium/Large →
+  Small Parcel. Without a size: single cards and card lots → Large Letter, sealed / accessories & merch → Small Parcel.
+  Change any card's size in the admin card list.
+- To add another size later (e.g. Medium Parcel), add it to `BANDS` in `server/postage.js`.
+- Checkout asks for an email and a UK delivery address (phone optional). Orders store
+  `postage { service, band, amount, free }`, `total` and `shipping_address`.
+
+## Orders, sales and accounts (admin → Sales)
+
+Orders contain customers' names, emails and home addresses, so they are **never** written to the
+public shop repo. Set `ORDERS_GITHUB_REPO` to a separate **private** repo and every order (and every
+status change) is committed there as `orders/YYYY-MM/<order-id>.json` with `[skip render]` in the
+commit message (no redeploy). Orders are loaded back from that repo when the server starts.
+Cost prices are stored there too (`costs.json`), not in `data/products.json`.
+
+| Env var | |
+| --- | --- |
+| `ORDERS_GITHUB_REPO` | e.g. `pokemartfun-stack/tcg-shop-orders` (must be private; the shop repo is refused) |
+| `ORDERS_GITHUB_TOKEN` | optional; defaults to `GITHUB_TOKEN` |
+| `ORDERS_GITHUB_BRANCH` | optional; default `main` |
+
+Without it, orders only live in `data/orders.json` on the server disk (wiped by Render on every
+restart/deploy) and the admin page shows a red warning.
+
+**Setup (once):**
+1. GitHub → New repository → name `tcg-shop-orders`, **Private**, tick "Add a README file" (so the `main` branch exists).
+2. GitHub → Settings → Developer settings → Fine-grained tokens → the token the shop already uses → Edit →
+   Repository access → also select `tcg-shop-orders` → Permissions → Contents: **Read and write** → Update.
+3. Render → the shop service → Environment → add `ORDERS_GITHUB_REPO` = `pokemartfun-stack/tcg-shop-orders` → Save (redeploys).
+4. Open `/admin` → the Sales banner should be green ("saved to the private repo").
+
+**Sales section:** orders newest first (UK date/time, customer, items, postage band, total, payment method,
+status). "Details" shows the address and lets you set the status: Paid → Posted (Royal Mail tracking
+number required) → Refunded / Cancelled, plus the postage you actually paid. Pick any **From** and **To** dates
+(UK time, both days included; opens on the 1st of this month → today; e.g. 06/04 → 05/04 for a tax year) to get: orders, items, sales, postage charged,
+**estimated** payment fees (Stripe 1.5% + 20p, PayPal 2.9% + 30p — editable), net, cost of goods (from the
+optional per-product "Cost £"), postage paid and profit. Refunded/cancelled and demo orders are left out of
+the totals (demo can be included with the tick box). "Download CSV" and "Download Excel" (.xlsx: a Summary sheet
+plus an Orders sheet with one row per order line, real £ numbers and dd/mm/yyyy dates) follow the chosen
+dates, for your self-assessment records. Fees are estimates — your Stripe/PayPal reports have the exact figures.
+
 ## Portability
 
 Everything that makes up the shop lives in the GitHub repo:
