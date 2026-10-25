@@ -39,15 +39,61 @@
 
     <div class="checkout-grid">
       <div class="panel">
-        <h2 style="margin-top:0">Contact</h2>
-        <p class="hint" id="guest-hint">Checking out as a guest. <button type="button" class="linkish" data-open-auth="login" style="display:inline;padding:0">Log in</button> if you have an account.</p>
-        <div class="form-row">
-          <label for="email">Email (for receipt)</label>
-          <input id="email" type="email" autocomplete="email" placeholder="you@example.com" />
-        </div>
+        <form id="ship-form" novalidate autocomplete="on">
+          <h2 style="margin-top:0">Contact</h2>
+          <p class="hint" id="guest-hint">Checking out as a guest. <button type="button" class="linkish" data-open-auth="login" style="display:inline;padding:0">Log in</button> if you have an account.</p>
+          <div class="form-grid">
+            <div class="form-row span-2">
+              <label for="email">Email (receipt + tracking number) *</label>
+              <input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required />
+            </div>
+            <div class="form-row span-2">
+              <label for="phone">Phone (optional, for delivery updates)</label>
+              <input id="phone" name="phone" type="tel" autocomplete="tel" placeholder="07…" />
+            </div>
+          </div>
+
+          <h2>Delivery address <span class="hint">(UK only)</span></h2>
+          <div class="form-grid">
+            <div class="form-row span-2">
+              <label for="ship-name">Full name *</label>
+              <input id="ship-name" name="name" autocomplete="name" required />
+            </div>
+            <div class="form-row span-2">
+              <label for="ship-line1">Address line 1 *</label>
+              <input id="ship-line1" name="line1" autocomplete="address-line1" placeholder="House number and street" required />
+            </div>
+            <div class="form-row span-2">
+              <label for="ship-line2">Address line 2 (optional)</label>
+              <input id="ship-line2" name="line2" autocomplete="address-line2" placeholder="Flat, building, area" />
+            </div>
+            <div class="form-row">
+              <label for="ship-town">Town / city *</label>
+              <input id="ship-town" name="town" autocomplete="address-level2" required />
+            </div>
+            <div class="form-row">
+              <label for="ship-county">County (optional)</label>
+              <input id="ship-county" name="county" autocomplete="address-level1" />
+            </div>
+            <div class="form-row">
+              <label for="ship-postcode">Postcode *</label>
+              <input id="ship-postcode" name="postcode" autocomplete="postal-code" autocapitalize="characters" placeholder="SW1A 1AA" required />
+            </div>
+            <div class="form-row">
+              <label>Country</label>
+              <input value="United Kingdom" disabled />
+            </div>
+          </div>
+        </form>
+
         <h2>Order summary</h2>
         <div id="summary-lines"></div>
-        <p class="subtotal" style="margin-top:1rem">Total: <span id="checkout-total">£0.00</span></p>
+        <dl class="totals">
+          <div><dt>Subtotal</dt><dd id="checkout-subtotal">£0.00</dd></div>
+          <div class="postage-line"><dt>Postage: <span id="checkout-postage-name">Royal Mail Tracked 48</span> <small id="checkout-postage-band"></small></dt><dd id="checkout-postage">£0.00</dd></div>
+          <div class="grand"><dt>Total</dt><dd id="checkout-total">£0.00</dd></div>
+        </dl>
+        <p class="hint">Sent by Royal Mail Tracked 48 (aims to deliver in 2–3 working days), one postage charge per order.</p>
         <p><a href="/cart.html">← Edit cart</a></p>
       </div>
 

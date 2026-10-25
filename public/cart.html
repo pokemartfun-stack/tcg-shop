@@ -54,7 +54,12 @@
           <tbody id="cart-body"></tbody>
         </table>
         <div class="cart-summary">
-          <div class="subtotal">Subtotal: <span id="cart-subtotal">£0.00</span></div>
+          <dl class="totals">
+            <div><dt>Subtotal</dt><dd id="cart-subtotal">£0.00</dd></div>
+            <div class="postage-line"><dt>Postage: <span id="cart-postage-name">Royal Mail Tracked 48</span> <small id="cart-postage-band"></small></dt><dd id="cart-postage">£0.00</dd></div>
+            <div class="grand"><dt>Total</dt><dd id="cart-total">£0.00</dd></div>
+          </dl>
+          <p class="postage-note hint" id="cart-postage-note"></p>
           <a class="btn" href="/checkout.html" id="checkout-link">Checkout</a>
           <p class="stock-warn" id="cart-stock-warn" hidden></p>
         </div>

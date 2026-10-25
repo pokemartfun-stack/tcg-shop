@@ -21,6 +21,11 @@
     .admin .grid label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
     .admin .small { width: 80px; }
     .admin select.cat { margin-top: 4px; max-width: 220px; }
+    .admin select.post { margin-top: 4px; max-width: 220px; }
+    .postage-table { width: auto; margin: 0.5rem 0 1rem; }
+    .postage-table td, .postage-table th { padding: 6px 14px 6px 0; text-align: left; }
+    .postage-table input { width: 90px; }
+    .admin .checkline input#free-over { width: 90px; height: auto; }
     .admin button { cursor: pointer; padding: 6px 12px; border-radius: 6px; border: 0; background: #2563eb; color: #fff; }
     .admin button.danger { background: #dc2626; }
     .admin button.ghost { background: #6b7280; }
@@ -74,6 +79,67 @@
     .thumbs .ord button { padding: 0 4px; font-size: 10px; line-height: 16px; background: #374151; border-radius: 4px; }
     .thumbs .ord em { font-size: 10px; color: #f59e0b; font-style: normal; }
     .admin .rowphotos input[type=file] { display: none; }
+    .admin .costlbl { display: flex; flex-direction: column; font-size: 11px; color: #9aa3b5; margin-top: 4px; }
+    /* ---- Sales ---- */
+    .admin-nav { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 14px; }
+    .admin-nav a { padding: 5px 12px; border-radius: 999px; background: #1D2C5E; color: #FFCB05; text-decoration: none; font-weight: 700; font-size: 13px; border: 1px solid #FFCB0566; }
+    .storage-warn { background: #b91c1c; color: #fff; padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; font-weight: 600; }
+    .storage-warn.ok { background: #15803d; font-weight: 500; }
+    .storage-warn button { margin-left: 8px; background: #fff; color: #b91c1c; }
+    .sales-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 12px; }
+    .sales-controls label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: #9aa3b5; }
+    .admin label.inline { flex-direction: row; align-items: center; gap: 6px; font-size: 13px; color: inherit; display: inline-flex; }
+    .admin label.inline input { width: 16px; height: 16px; }
+    .dl-buttons { display: inline-flex; gap: 8px; flex-wrap: wrap; }
+    .admin button.xlsx { background: #15803d; }
+    .admin button:disabled { opacity: 0.45; cursor: not-allowed; }
+    .range-line { margin: 0 0 10px; font-weight: 600; }
+    .range-error { margin: 0 0 10px; padding: 8px 12px; border-radius: 8px; background: #b91c1c; color: #fff; font-weight: 600; }
+    .range-error[hidden] { display: none; }
+    .range-bad #s-cards, .range-bad #s-notes, .range-bad .sales-months, .range-bad .orders-table { opacity: 0.3; pointer-events: none; }
+    .range-line:empty { display: none; }
+    .sales-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+    .sales-card { background: #0b0d1299; border: 1px solid #8884; border-radius: 10px; padding: 10px 12px; }
+    .sales-card .k { font-size: 12px; color: #9aa3b5; }
+    .sales-card .v { font-size: 20px; font-weight: 800; margin-top: 2px; }
+    .sales-card.hl { border-color: #FFCB05; } .sales-card.hl .v { color: #FFCB05; }
+    .sales-card .v.neg { color: #f87171; }
+    .sales-scroll { overflow-x: auto; }
+    .admin .sales-table { min-width: 760px; font-size: 13px; }
+    .admin .sales-table td.num, .admin .sales-table th.num { text-align: right; white-space: nowrap; }
+    .admin .sales-table tr.total td { font-weight: 800; border-top: 2px solid #8886; }
+    .admin .orders-table tr.order-row.open td { background: #2563eb18; }
+    .admin .orders-table tr.order-row.is-demo td { opacity: 0.75; }
+    .admin .nowrap { white-space: nowrap; }
+    .badge-s { white-space: nowrap; display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+    .badge-s.paid { background: #f59e0b33; color: #fbbf24; } .badge-s.posted { background: #16a34a33; color: #4ade80; }
+    .badge-s.refunded, .badge-s.cancelled { background: #6b728055; color: #d1d5db; } .badge-s.demo { background: #6b728055; color: #d1d5db; margin-left: 4px; }
+    .order-detail td { background: #0b0d1266; }
+    .order-detail .od { display: grid; grid-template-columns: 1fr 1fr 1.2fr; gap: 16px; padding: 6px 2px; }
+    .order-detail h4 { margin: 0 0 6px; font-size: 13px; color: #9aa3b5; text-transform: uppercase; letter-spacing: .04em; }
+    .order-detail address { font-style: normal; line-height: 1.45; }
+    .order-detail .od-form { display: flex; flex-direction: column; gap: 6px; }
+    .order-detail .od-form label { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: #9aa3b5; }
+    .order-detail .lines td { padding: 2px 6px 2px 0; border: 0; font-size: 13px; }
+    .fees-box { margin-top: 14px; } .fees-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-top: 8px; }
+    .fees-form p { flex-basis: 100%; margin: 0; } .fees-form label { display: flex; flex-direction: column; font-size: 12px; } .fees-form input { width: 80px; }
+    @media (max-width: 700px) {
+      .admin .sales-table thead { display: table-header-group; }
+      .admin .sales-table tr { display: table-row; }
+      .admin .sales-table td { border-bottom: 1px solid #8883; }
+      .admin .sales-table td:first-child { grid-row: auto; }
+      .order-detail .od { grid-template-columns: 1fr; }
+      /* orders as cards on phones */
+      .admin .orders-table { min-width: 0; }
+      .admin .orders-table thead { display: none; }
+      .admin .orders-table tr.order-row { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 10px; padding: 10px 4px; border-bottom: 1px solid #8884; }
+      .admin .orders-table tr.order-row td { display: block; border: 0; padding: 2px 4px; text-align: left; }
+      .admin .orders-table tr.order-row td::before { content: attr(data-label); display: block; font-size: 11px; color: #9aa3b5; }
+      .admin .orders-table tr.order-row td.toggle-cell::before { content: none; }
+      .admin .orders-table tr.order-row td.toggle-cell { align-self: center; }
+      .admin .orders-table tr.order-detail, .admin .orders-table tr.order-detail > td { display: block; }
+      .sales-card .v { font-size: 17px; }
+    }
   </style>
 </head>
 <body>
@@ -91,8 +157,47 @@
 
     <div id="panel" hidden>
       <p><span id="sync"></span> · <a href="/" target="_blank">View shop</a> · <button class="ghost" id="logout">Log out</button></p>
+      <nav class="admin-nav" aria-label="Admin sections"><a href="#sales-section">Sales</a><a href="#postage-section">Postage</a><a href="#import-section">Import</a><a href="#add-section">Add product</a><a href="#cards-section">Cards</a><a href="#banner-section">Shop look</a></nav>
+      <div class="storage-warn" id="orders-warn" hidden></div>
 
-      <section>
+      <section id="sales-section" class="sales">
+        <h2>Sales</h2>
+        <div class="sales-controls">
+          <label>From <input type="date" id="s-from" lang="en-GB" required /></label>
+          <label>To <input type="date" id="s-to" lang="en-GB" required /></label>
+          <label class="inline"><input type="checkbox" id="s-demo" /> Include demo orders</label>
+          <span class="dl-buttons">
+            <button type="button" class="ghost" id="s-csv">Download CSV</button>
+            <button type="button" class="xlsx" id="s-xlsx">Download Excel</button>
+          </span>
+        </div>
+        <p class="range-line" id="s-range-text" aria-live="polite"></p>
+        <p class="range-error" id="s-range-error" role="alert" hidden></p>
+        <div class="sales-cards" id="s-cards"></div>
+        <p class="hint" id="s-notes"></p>
+        <details class="sales-months" id="s-months-wrap"><summary>By month</summary><div class="sales-scroll"><table class="sales-table" id="s-months"></table></div></details>
+
+        <h3>Orders <span class="hint" id="s-orders-count"></span></h3>
+        <label class="inline"><input type="checkbox" id="s-only-paid" /> Only orders waiting to be posted</label>
+        <div class="sales-scroll"><table class="sales-table orders-table">
+          <thead><tr><th>Date (UK)</th><th>Order</th><th>Customer</th><th>Items</th><th>Subtotal</th><th>Postage</th><th>Total</th><th>Paid by</th><th>Status</th><th></th></tr></thead>
+          <tbody id="s-orders"></tbody>
+        </table></div>
+
+        <details class="fees-box" id="fees-box"><summary>Payment fees used for the estimates</summary>
+          <form id="fees-form" class="fees-form">
+            <p class="hint">These are <strong>estimates</strong> for the summary only. Your exact fees are in your Stripe and PayPal reports. Defaults: Stripe standard UK cards 1.5% + 20p; PayPal UK goods &amp; services 2.9% + 30p.</p>
+            <label>Stripe % <input type="number" step="0.01" min="0" max="20" name="stripe_percent" /></label>
+            <label>+ £ <input type="number" step="0.01" min="0" max="5" name="stripe_fixed" /></label>
+            <label>PayPal % <input type="number" step="0.01" min="0" max="20" name="paypal_percent" /></label>
+            <label>+ £ <input type="number" step="0.01" min="0" max="5" name="paypal_fixed" /></label>
+            <button type="submit">Save fees</button>
+          </form>
+        </details>
+        <div class="result" id="sales-result"></div>
+      </section>
+
+      <section id="banner-section">
         <h2>Shop banner</h2>
         <form id="settings-form" class="grid">
           <label>Shop name<input name="shop_name" maxlength="60" required /></label>
@@ -152,6 +257,20 @@
         <div class="result" id="bg-result"></div>
       </section>
 
+      <section id="postage-section">
+        <h2>Postage — Royal Mail Tracked 48</h2>
+        <p class="hint">Each order is sent as <strong>one</strong> Royal Mail Tracked 48 item and charged <strong>once</strong>, at the price of the largest size in the basket (e.g. 3 single cards + 1 lot = one Small Parcel charge). Set each card's size in the card list below. Default prices are Royal Mail's online (Click &amp; Drop) Tracked 48 prices from 5 October 2026.</p>
+        <form id="postage-form">
+          <table class="postage-table">
+            <thead><tr><th>Royal Mail size</th><th>Size limits</th><th>Price charged £</th></tr></thead>
+            <tbody id="postage-bands"></tbody>
+          </table>
+          <label class="checkline"><span><input type="checkbox" name="free_over_enabled" id="free-over-enabled" /> Free postage on orders over £ <input class="small" type="number" name="free_over" id="free-over" min="0" step="0.01" /></span><span class="hint">Off by default. Uses the items total (before postage).</span></label>
+          <div><button type="submit">Save postage</button></div>
+        </form>
+        <div class="result" id="postage-result"></div>
+      </section>
+
       <section id="import-section">
         <h2>Upload JSON file + photos</h2>
         <p>Use the <code>vinted_listings.json</code> from the Vinted Listing Tool, or a shop file (<code>id, title, price_gbp, condition, category, image, stock</code>). Photos are matched to cards by file name.</p>
@@ -194,7 +313,7 @@
         <div class="result" id="bulk-result"></div>
       </section>
 
-      <section>
+      <section id="add-section">
         <h2>Add a product</h2>
         <p class="hint">Pick the <strong>Category</strong> to choose the shop tab: Trading cards / Trading card lots → <em>Cards &amp; Lots</em>, Sealed products → <em>Sealed Products</em>, Accessories &amp; Merch → <em>Accessories &amp; Merch</em>.</p>
         <form id="add-form" class="grid">
@@ -202,6 +321,7 @@
           <label>Title<input name="title" required /></label>
           <label>Price £<input name="price_gbp" type="number" step="0.01" min="0" required /></label>
           <label>Stock<input name="stock" type="number" step="1" min="0" value="1" required /></label>
+          <label>Cost price £ (optional, only you see it)<input name="cost_gbp" type="number" step="0.01" min="0" placeholder="what you paid" /></label>
           <label>Condition
             <select name="condition"><option>Near mint</option><option>Lightly played</option><option>Moderately played</option><option>Heavily played</option><option>Damaged</option><option>New</option><option>New (sealed)</option></select>
           </label>
@@ -210,6 +330,9 @@
               <option>Trading cards</option><option>Trading card lots</option><option>Sealed products</option><option>Accessories &amp; Merch</option>
             </select>
           </label>
+          <label>Postage (Royal Mail Tracked 48)
+            <select name="postage_band" id="add-postage"><option>Large Letter</option><option>Small Parcel</option></select>
+          </label>
           <label>Image URL (optional)<input name="image" placeholder="https://..." /></label>
           <label>Photos (optional, several allowed)<input name="photos" type="file" multiple accept="image/jpeg,image/png,image/webp,.heic,.heif,.jpg,.jpeg,.png,.webp" /></label>
           <label style="grid-column: 1 / -1">Description<textarea name="description" rows="2"></textarea></label>
@@ -217,13 +340,13 @@
         </form>
       </section>
 
-      <section>
+      <section id="cards-section">
         <h2>Cards (<span id="count">0</span>) · <span id="oos-count"></span></h2>
         <label class="filterbar"><input type="checkbox" id="only-oos" /> Show out-of-stock only</label>
         <button type="button" id="fix-order" title="Sort every card's photos by the order in your Vinted JSON (photo first)">Fix photo order</button>
         <span class="hint">★ = set as cover, ◀ ▶ = reorder. The cover is the photo shown in the shop.</span>
         <table>
-          <thead><tr><th>Photos</th><th>ID</th><th>Title / category</th><th>Price £</th><th>Quantity</th><th>Quick restock</th><th></th></tr></thead>
+          <thead><tr><th>Photos</th><th>ID</th><th>Title / category / postage</th><th>Price £ / cost £</th><th>Quantity</th><th>Quick restock</th><th></th></tr></thead>
           <tbody id="rows"></tbody>
         </table>
       </section>
@@ -231,5 +354,6 @@
   </main>
   <script src="/js/categories.js"></script>
   <script src="/js/admin.js"></script>
+  <script src="/js/admin-sales.js"></script>
 </body>
 </html>
