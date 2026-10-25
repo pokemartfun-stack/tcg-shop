@@ -29,6 +29,7 @@ async function renderCart() {
   empty.hidden = true;
   filled.hidden = false;
   sub.textContent = formatGbp(cart.subtotal);
+  renderPostage(cart);
   const problems = cart.problems || [];
   const probFor = (id) => problems.find((x) => x.productId === id);
   const warn = document.getElementById('cart-stock-warn');
@@ -83,6 +84,21 @@ async function renderCart() {
     });
   });
   await window.TCGApp.refreshCartBadge();
+}
+
+// Postage is worked out on the server (one Royal Mail Tracked 48 item, priced at the largest band).
+function renderPostage(cart) {
+  const q = cart.postage;
+  if (!q) return;
+  document.getElementById('cart-postage-name').textContent = q.service;
+  document.getElementById('cart-postage-band').textContent = q.band ? `(${q.band})` : '';
+  document.getElementById('cart-postage').textContent = q.free ? 'FREE' : formatGbp(q.amount);
+  document.getElementById('cart-total').textContent = formatGbp(cart.total);
+  const note = document.getElementById('cart-postage-note');
+  const parts = ['One postage charge per order, whatever the number of items.'];
+  if (q.free_over != null && !q.free) parts.push(`Free postage on orders over ${formatGbp(q.free_over)} — add ${formatGbp(Math.max(0, q.free_over - q.subtotal))} more.`);
+  if (q.free) parts.push('Your order qualifies for free postage.');
+  note.textContent = parts.join(' ');
 }
 
 function escapeHtml(s) {

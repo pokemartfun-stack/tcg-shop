@@ -3,6 +3,7 @@ const { api, formatGbp } = window.TCG;
 const CAT = window.TCGCategories;
 
 let ALL = [];
+let POSTAGE = null; // settings.postage: Royal Mail Tracked 48 price per band
 // Current shop section (tab): from ?tab=… so links like /?tab=sealed open the right tab.
 let TAB = CAT.parseTab(new URLSearchParams(location.search).get('tab'));
 const $ = (id) => document.getElementById(id);
@@ -81,6 +82,7 @@ function cardHtml(p) {
         <div class="meta">${escapeHtml(p.condition)} · ${escapeHtml(p.category)}</div>
         <div class="meta">${stockLabel(p)}</div>
         <div class="price">${formatGbp(p.price_gbp)}</div>
+        ${postageHint(p)}
         <div class="card-actions">
           <button type="button" class="btn block" data-add="${escapeHtml(p.id)}" ${out ? 'disabled aria-disabled="true"' : ''}>
             ${out ? 'Out of stock' : 'Add to cart'}
@@ -88,6 +90,14 @@ function cardHtml(p) {
         </div>
       </div>
     </article>`;
+}
+
+// Subtle "Tracked 48 postage from £x" under the price (one postage charge per order).
+function postageHint(p) {
+  const band = p.postage_band || (['Trading cards', 'Trading card lots'].includes(p.category) ? 'Large Letter' : 'Small Parcel');
+  const b = POSTAGE && POSTAGE.bands && POSTAGE.bands[band];
+  if (!b || !Number.isFinite(Number(b.price))) return '';
+  return `<div class="postage-hint" title="Royal Mail Tracked 48 · ${escapeHtml(band)} · one postage charge per order">Tracked 48 postage from ${formatGbp(b.price)}</div>`;
 }
 
 function readFilters() {
@@ -187,7 +197,9 @@ function setTab(id, push) {
 }
 
 async function loadProducts() {
-  ALL = (await api('/api/products')).map((p, i) => ({ ...p, _i: i }));
+  const [list, settings] = await Promise.all([api('/api/products'), api('/api/settings').catch(() => null)]);
+  if (settings && settings.postage) POSTAGE = settings.postage;
+  ALL = list.map((p, i) => ({ ...p, _i: i }));
   refreshTabUi();
   applyFilters();
 }

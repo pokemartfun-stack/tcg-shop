@@ -2,6 +2,11 @@
   const $ = (s) => document.querySelector(s);
   const CAT = window.TCGCategories;
   // Category dropdown for a card row: the 4 shop categories, grouped by the shop tab they appear in.
+  // Royal Mail Tracked 48 sizes (filled from the server's list when settings load)
+  let BANDS = [{ id: 'Large Letter' }, { id: 'Small Parcel' }];
+  function bandOptions(current) {
+    return BANDS.map((b) => `<option${b.id === current ? ' selected' : ''}>${esc(b.id)}</option>`).join('');
+  }
   function catOptions(current) {
     const cur = CAT.normaliseCategory(current);
     return CAT.TABS.map((t) => `<optgroup label="${esc(t.label)} tab">${t.categories.map((c) =>
@@ -56,9 +61,12 @@
     $('#login-box').hidden = true;
     $('#panel').hidden = false;
     await Promise.all([render(), loadSettings()]);
+    document.dispatchEvent(new CustomEvent('admin:ready'));
   }
 
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  // shared with admin-sales.js (Sales section)
+  window.TCGAdmin = { api, msg, syncNote, esc, token: () => token };
 
   let LAST = [];
 
@@ -81,8 +89,10 @@
         </td>
         <td>${esc(p.id)}</td>
         <td>${esc(p.title)} ${p.stock < 1 ? '<span class="oos">OUT OF STOCK</span>' : ''}<br><small>${esc(p.condition)}</small>
-          <br><select class="cat" data-f="category" aria-label="Category (shop tab)" title="Category — decides the shop tab">${catOptions(p.category)}</select></td>
-        <td><input class="small" type="number" step="0.01" min="0" data-f="price_gbp" value="${p.price_gbp}" /></td>
+          <br><select class="cat" data-f="category" aria-label="Category (shop tab)" title="Category — decides the shop tab">${catOptions(p.category)}</select>
+          <br><select class="post" data-f="postage_band" aria-label="Postage size" title="Royal Mail Tracked 48 size${p.postage_size ? ' (Vinted size: ' + esc(p.postage_size) + ')' : ''}">${bandOptions(p.postage_band)}</select></td>
+        <td><input class="small" type="number" step="0.01" min="0" data-f="price_gbp" value="${p.price_gbp}" aria-label="Price £" />
+          <label class="costlbl">Cost £<input class="small" type="number" step="0.01" min="0" data-f="cost_gbp" value="${p.cost_gbp != null ? p.cost_gbp : ''}" placeholder="—" aria-label="Cost price £ (private)" title="What you paid for it — only you see this; used for profit in Sales" /></label></td>
         <td><input class="small" type="number" step="1" min="0" data-f="stock" value="${p.stock}" /></td>
         <td class="stockctl">
           <button class="ghost" data-act="delta" data-delta="-1" title="Remove one">−1</button>
@@ -161,9 +171,11 @@
           price_gbp: Number(tr.querySelector('[data-f=price_gbp]').value),
           stock: Number(tr.querySelector('[data-f=stock]').value),
           category: tr.querySelector('[data-f=category]').value,
+          postage_band: tr.querySelector('[data-f=postage_band]').value,
+          cost_gbp: tr.querySelector('[data-f=cost_gbp]').value, // blank = no cost price
         };
         const d = await api('PATCH', '/products/' + encodeURIComponent(id), body);
-        msg('Updated ' + id + ' (£' + d.product.price_gbp.toFixed(2) + ', ' + d.product.stock + ' in stock, ' + d.product.category + ')' + syncNote(d), true);
+        msg('Updated ' + id + ' (£' + d.product.price_gbp.toFixed(2) + (d.product.cost_gbp != null ? ', cost £' + d.product.cost_gbp.toFixed(2) : '') + ', ' + d.product.stock + ' in stock, ' + d.product.category + ', ' + d.product.postage_band + ' postage)' + syncNote(d), true);
       }
       await render();
     } catch (err) { msg(err.message); }
@@ -204,7 +216,43 @@
     previewLogo(st.logo_image || '/images/logo.png');
     previewBanner();
     previewBackground(st.background_image || '');
+    loadPostage(st);
   }
+
+  // ---- Postage (Royal Mail Tracked 48): price per size + optional free-postage threshold ----
+  function loadPostage(st) {
+    if (Array.isArray(st.postage_bands) && st.postage_bands.length) {
+      BANDS = st.postage_bands;
+      $('#add-postage').innerHTML = bandOptions(BANDS[0].id);
+    }
+    const p = st.postage || {};
+    $('#postage-bands').innerHTML = BANDS.map((b) => `
+      <tr><td><strong>${esc(b.id)}</strong></td><td class="hint">${esc(b.limits || '')}</td>
+      <td><input type="number" min="0" max="100" step="0.01" required data-band="${esc(b.id)}" value="${p.bands && p.bands[b.id] ? Number(p.bands[b.id].price).toFixed(2) : ''}" aria-label="${esc(b.id)} price" /></td></tr>`).join('');
+    $('#free-over-enabled').checked = Boolean(p.free_over_enabled);
+    $('#free-over').value = p.free_over != null ? Number(p.free_over).toFixed(2) : '50.00';
+    $('#free-over').disabled = !p.free_over_enabled;
+  }
+  // New product: suggest the usual size for the category (cards + card lots = Large Letter, sealed / accessories = Small Parcel)
+  $('#add-category').addEventListener('change', (e) => {
+    $('#add-postage').value = ['Trading cards', 'Trading card lots'].includes(e.target.value) ? 'Large Letter' : 'Small Parcel';
+  });
+  $('#free-over-enabled').addEventListener('change', (e) => { $('#free-over').disabled = !e.target.checked; });
+  $('#postage-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const bands = {};
+    document.querySelectorAll('#postage-bands [data-band]').forEach((i) => { bands[i.dataset.band] = { price: i.value }; });
+    const body = { postage: { bands, free_over_enabled: $('#free-over-enabled').checked, free_over: $('#free-over').value || '0' } };
+    const out = $('#postage-result');
+    try {
+      const d = await api('PUT', '/settings', body);
+      const q = d.settings.postage;
+      out.className = 'result ok';
+      out.textContent = 'Postage saved: ' + BANDS.map((b) => `${b.id} £${q.bands[b.id].price.toFixed(2)}`).join(', ') +
+        (q.free_over_enabled ? ` · free over £${q.free_over.toFixed(2)}` : ' · no free postage') + syncNote(d);
+      loadPostage({ ...d.settings, postage_bands: BANDS });
+    } catch (err) { out.className = 'result err'; out.textContent = err.message; }
+  });
 
   // ---- Banner / background accept GIF too (kept animated server-side, max 8 MB) ----
   const SITE_IMG = /\.(jpe?g|png|webp|heic|heif|gif)$/i;
@@ -399,6 +447,7 @@
     const body = Object.fromEntries(form.entries());
     body.price_gbp = Number(body.price_gbp);
     body.stock = Number(body.stock);
+    if (body.cost_gbp === '') delete body.cost_gbp;
     try {
       const d = await api('POST', '/products', body);
       let note = '';
