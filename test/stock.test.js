@@ -18,6 +18,8 @@ process.env.ADMIN_PASSWORD = 'owner-secret';
 delete process.env.GITHUB_TOKEN;
 delete process.env.STRIPE_SECRET_KEY;
 delete process.env.PAYPAL_CLIENT_ID;
+// checkout now needs an email + UK delivery address
+const BUYER = { email: 't@example.com', address: { name: 'Ash Ketchum', line1: '1 Pallet Road', town: 'London', postcode: 'SW1A 1AA' } };
 
 const app = require('../server/index');
 
@@ -64,7 +66,7 @@ describe('stock enforcement', () => {
   it('demo checkout decrements stock and persists it', async () => {
     const s = await newShopper();
     await call('POST', '/api/cart/add', { productId: 'a', qty: 2 }, { shopper: s });
-    const r = await call('POST', '/api/checkout/demo', { email: 't@example.com' }, { shopper: s });
+    const r = await call('POST', '/api/checkout/demo', BUYER, { shopper: s });
     assert.equal(r.status, 200);
     assert.equal(await stockOf('a'), 1);
     assert.equal(fileStock('a'), 1);
@@ -77,14 +79,14 @@ describe('stock enforcement', () => {
     const s2 = await newShopper();
     await call('POST', '/api/cart/add', { productId: 'a', qty: 1 }, { shopper: s1 });
     await call('POST', '/api/cart/add', { productId: 'a', qty: 1 }, { shopper: s2 });
-    assert.equal((await call('POST', '/api/checkout/demo', {}, { shopper: s1 })).status, 200);
+    assert.equal((await call('POST', '/api/checkout/demo', BUYER, { shopper: s1 })).status, 200);
     assert.equal(await stockOf('a'), 0);
     const cart = await call('GET', '/api/cart', null, { shopper: s2 });
     assert.equal(cart.data.problems.length, 1);
-    const r = await call('POST', '/api/checkout/demo', {}, { shopper: s2 });
+    const r = await call('POST', '/api/checkout/demo', BUYER, { shopper: s2 });
     assert.equal(r.status, 409);
     assert.match(r.data.error, /out of stock/);
-    assert.equal((await call('POST', '/api/checkout/paypal/record', {}, { shopper: s2 })).status, 409);
+    assert.equal((await call('POST', '/api/checkout/paypal/record', BUYER, { shopper: s2 })).status, 409);
     assert.equal((await call('GET', '/api/checkout/stock-check', null, { shopper: s2 })).status, 409);
     assert.equal(await stockOf('a'), 0);
   });
@@ -93,7 +95,7 @@ describe('stock enforcement', () => {
     await call('POST', '/api/admin/products/a/stock', { delta: 2 }, { admin: adminToken });
     const s = await newShopper();
     await call('POST', '/api/cart/add', { productId: 'a', qty: 2 }, { shopper: s });
-    assert.equal((await call('POST', '/api/checkout/paypal/record', {}, { shopper: s })).status, 200);
+    assert.equal((await call('POST', '/api/checkout/paypal/record', BUYER, { shopper: s })).status, 200);
     assert.equal(await stockOf('a'), 0);
   });
 });
