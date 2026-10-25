@@ -125,6 +125,9 @@ function importList(list) {
       images: urls,
       stock,
       added_at: parseDate(raw.added_at || raw.date_added) || undefined,
+      // Vinted Small -> Large Letter, Medium/Large -> Small Parcel; missing -> by category
+      postage_band: raw.postage_band,
+      postage_size: raw.postage_size || raw.package_size,
     }, index);
     if (r.error) return fail(r.error.replace(/^Item \d+(\s\([^)]*\))?:\s*/, ''));
     if (!urls.length) r.product.images = [];

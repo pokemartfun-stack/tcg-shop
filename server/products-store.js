@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const sync = require('./github-sync');
 const { normaliseCategory } = require('../public/js/categories');
+const { bandForProduct } = require('./postage');
 
 const DEFAULT_PATH = path.join(__dirname, '..', 'data', 'products.json');
 const REPO_FILE = 'data/products.json';
@@ -57,6 +58,10 @@ function normalise(p, idx = 0) {
     images,
     stock,
   };
+  // Royal Mail Tracked 48 band: Large Letter / Small Parcel (from the Vinted size, else by category)
+  product.postage_band = bandForProduct({ ...p, category: product.category });
+  // original Vinted parcel size, kept for reference
+  if (p.postage_size && /^[a-z ]{1,20}$/i.test(String(p.postage_size).trim())) product.postage_size = String(p.postage_size).trim();
   if (Array.isArray(p.photo_files)) {
     // lower-case file names (no extension) from the Vinted export, used to match bulk photo uploads
     const pf = [...new Set(p.photo_files.map((x) => String(x).toLowerCase().trim()).filter((x) => /^[^\\/:*?"<>|]{1,120}$/.test(x)))].slice(0, 30);

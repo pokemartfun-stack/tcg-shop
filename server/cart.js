@@ -1,6 +1,7 @@
 /**
  * Pure cart helpers — unit-testable, no Express dependency.
  */
+const postage = require('./postage');
 
 function findProduct(products, id) {
   return products.find((p) => p.id === id) || null;
@@ -67,7 +68,8 @@ function removeFromCart(cart, productId) {
   return { ok: true, cart };
 }
 
-function enrichCart(cart, products) {
+/** @param postageSettings settings.postage — when given, adds { postage, total } (server-calculated). */
+function enrichCart(cart, products, postageSettings) {
   const lines = [];
   for (const line of cart.items) {
     const p = findProduct(products, line.productId);
@@ -81,13 +83,21 @@ function enrichCart(cart, products) {
       qty: line.qty,
       line_total: Math.round(p.price_gbp * line.qty * 100) / 100,
       stock: p.stock,
+      postage_band: postage.bandForProduct(p),
     });
   }
-  return {
+  const subtotal = cartSubtotal(cart, products);
+  const out = {
     items: lines,
-    subtotal: cartSubtotal(cart, products),
+    subtotal,
     count: lines.reduce((s, l) => s + l.qty, 0),
   };
+  if (postageSettings) {
+    // One Royal Mail Tracked 48 item per order, priced at the largest band in the basket.
+    out.postage = postage.quote(lines, subtotal, postageSettings);
+    out.total = out.postage.total;
+  }
+  return out;
 }
 
 module.exports = {

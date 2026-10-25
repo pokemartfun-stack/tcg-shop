@@ -126,4 +126,18 @@ async function safePush(repoFile, value, message, raw = false) {
   }
 }
 
-module.exports = { ghConfig, pullJson, pushJson, pushContent, fetchFile, safePush };
+/** GET https://api.github.com/repos/<repo><suffix> (e.g. '' for repo info). Throws with .status on errors. */
+async function repoGet(cfg, suffix = '') {
+  const res = await fetch(`https://api.github.com/repos/${cfg.repo}${suffix}`, {
+    headers: { Authorization: `Bearer ${cfg.token}`, Accept: 'application/vnd.github+json', 'User-Agent': 'tcg-shop' },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(`GitHub GET ${cfg.repo}${suffix} ${res.status}: ${data.message || 'error'}`);
+    err.status = res.status;
+    throw err;
+  }
+  return data;
+}
+
+module.exports = { ghConfig, gh, repoGet, pullJson, pushJson, pushContent, fetchFile, safePush };

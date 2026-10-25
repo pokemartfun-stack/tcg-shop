@@ -3,6 +3,8 @@
 const fs = require('fs');
 const path = require('path');
 const sync = require('./github-sync');
+const postage = require('./postage');
+const sales = require('./sales');
 
 const DEFAULT_PATH = path.join(__dirname, '..', 'data', 'settings.json');
 const REPO_FILE = 'data/settings.json';
@@ -18,6 +20,10 @@ const DEFAULTS = {
   logo_image: '/images/logo.png',
   // big shop name + tagline over the banner; off because banner art usually has its own lettering
   show_banner_text: false,
+  // Royal Mail Tracked 48 price per band (Large Letter / Small Parcel) + optional free-postage threshold
+  postage: postage.DEFAULT_POSTAGE,
+  // ESTIMATED payment fees used in the admin Sales summary (editable)
+  fees: sales.DEFAULT_FEES,
 };
 
 function filePath() {
@@ -68,6 +74,16 @@ function validate(input) {
     const v = input.show_banner_text;
     out.show_banner_text = v === true || v === 'true' || v === 'on' || v === '1' || v === 1;
   }
+  if (input.postage !== undefined) {
+    const v = postage.validatePostage(input.postage);
+    if (v.error) return { error: v.error };
+    out.postage = v.postage;
+  }
+  if (input.fees !== undefined) {
+    const v = sales.validateFees(input.fees);
+    if (v.error) return { error: v.error };
+    out.fees = v.fees;
+  }
   if (input.background_last !== undefined) {
     const v = String(input.background_last).trim();
     if (!/^\/images\/background\.(jpg|gif)$/.test(v)) return { error: 'background_last must be /images/background.jpg or .gif' };
@@ -77,6 +93,17 @@ function validate(input) {
 }
 
 async function update(patch) {
+  if (patch && patch.postage && typeof patch.postage === 'object') {
+    // partial postage edits keep the other band prices / threshold as they are
+    const v = postage.validatePostage(patch.postage, get().postage);
+    if (v.error) return { error: v.error };
+    patch = { ...patch, postage: v.postage };
+  }
+  if (patch && patch.fees && typeof patch.fees === 'object') {
+    const v = sales.validateFees(patch.fees, get().fees);
+    if (v.error) return { error: v.error };
+    patch = { ...patch, fees: v.fees };
+  }
   const v = validate(patch);
   if (v.error) return { error: v.error };
   cache = { ...get(), ...v.settings };

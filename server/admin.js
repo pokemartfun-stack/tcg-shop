@@ -9,6 +9,8 @@ const multer = require('multer');
 const images = require('./images');
 const importer = require('./importer');
 const photoOrder = require('./photo-order');
+const ordersStore = require('./orders-store');
+const sales = require('./sales');
 
 const TOKENS = new Map(); // token -> expiry
 const TTL = 12 * 60 * 60 * 1000;
@@ -62,32 +64,44 @@ router.use(requireAdmin);
 
 router.get('/status', (_req, res) => {
   const cfg = store.ghConfig();
-  res.json({ ok: true, github: cfg ? { repo: cfg.repo, branch: cfg.branch } : null });
+  res.json({ ok: true, github: cfg ? { repo: cfg.repo, branch: cfg.branch } : null, orders: ordersStore.status() });
 });
 
-router.get('/products', (_req, res) => res.json(store.get()));
+// admin list includes the private cost prices (kept in the orders store, never in products.json)
+const withCost = (p) => { const c = ordersStore.getCost(p.id); return c === null ? p : { ...p, cost_gbp: c }; };
+router.get('/products', (_req, res) => res.json(store.get().map(withCost)));
 
 router.post('/products', async (req, res) => {
-  const r = store.normalise(req.body || {});
+  const { cost_gbp: costIn, ...body } = req.body || {};
+  const cost = ordersStore.parseCost(costIn);
+  if (cost.error) return res.status(400).json({ error: cost.error });
+  const r = store.normalise(body);
   if (r.error) return res.status(400).json({ error: r.error });
   const list = store.get();
   if (list.some((p) => p.id === r.product.id)) return res.status(409).json({ error: `id ${r.product.id} already exists` });
   if (!r.product.added_at) r.product.added_at = new Date().toISOString();
   const sync = await store.save([...list, r.product], `add ${r.product.id}`);
-  res.json({ product: r.product, ...sync });
+  if (cost.value !== null) await ordersStore.setCosts({ [r.product.id]: cost.value });
+  res.json({ product: withCost(r.product), ...sync });
 });
 
 router.patch('/products/:id', async (req, res) => {
   const list = store.get();
   const i = list.findIndex((p) => p.id === req.params.id);
   if (i < 0) return res.status(404).json({ error: 'Not found' });
-  const merged = { ...list[i], ...(req.body || {}), id: list[i].id };
+  const { cost_gbp: costIn, ...body } = req.body || {};
+  const cost = costIn === undefined ? null : ordersStore.parseCost(costIn);
+  if (cost && cost.error) return res.status(400).json({ error: cost.error });
+  const merged = { ...list[i], ...body, id: list[i].id };
   const r = store.normalise(merged);
   if (r.error) return res.status(400).json({ error: r.error });
   const next = list.slice();
   next[i] = r.product;
-  const sync = await store.save(next, `update ${r.product.id}`);
-  res.json({ product: r.product, ...sync });
+  // only rewrite products.json (public repo commit + redeploy) when something there changed
+  const changed = JSON.stringify(list[i]) !== JSON.stringify(r.product);
+  const sync = changed ? await store.save(next, `update ${r.product.id}`) : { github: false, unchanged: true };
+  if (cost) await ordersStore.setCosts({ [r.product.id]: cost.value });
+  res.json({ product: withCost(r.product), ...sync });
 });
 
 // Quick restock: { delta: +N / -N } — result clamped at 0.
@@ -105,7 +119,8 @@ router.post('/products/:id/stock', async (req, res) => {
   res.json({ product: next[i], ...sync });
 });
 
-router.get('/settings', (_req, res) => res.json(settings.get()));
+// postage_bands: the Royal Mail formats on offer (name + size limits + default price) for the admin form
+router.get('/settings', (_req, res) => res.json({ ...settings.get(), postage_bands: require('./postage').BANDS }));
 
 // Banner image upload (multipart field "banner"): public/images/banner.jpg, or banner.gif for GIFs
 // (kept animated), saved locally + committed to the repo.
@@ -191,6 +206,88 @@ router.put('/settings', async (req, res) => {
   const r = await settings.update(req.body || {});
   if (r.error) return res.status(400).json({ error: r.error });
   res.json(r);
+});
+
+// ---------------- Sales: orders, status updates, summaries, CSV ----------------
+// Admin-chosen date range (UK dates, both days included; default 1st of this month -> today).
+function salesOpts(req, res) {
+  const r = sales.parseRange(req.query.from, req.query.to);
+  if (r.error) { res.status(400).json({ error: r.error }); return null; }
+  return { ...r, includeDemo: req.query.demo === '1' || req.query.demo === 'true', fees: settings.get().fees || sales.DEFAULT_FEES };
+}
+
+router.get('/orders', (req, res) => {
+  const o = salesOpts(req, res);
+  if (!o) return;
+  const list = sales.ordersInRange(ordersStore.all(), o.from, o.to)
+    .filter((x) => o.includeDemo || !x.demo)
+    .map((x) => ({ ...x, figures: sales.orderFigures(x, o.fees), uk: sales.ukParts(x.createdAt) }));
+  res.json({ from: o.from, to: o.to, orders: list, storage: ordersStore.status() });
+});
+
+router.get('/sales/summary', (req, res) => {
+  const o = salesOpts(req, res);
+  if (!o) return;
+  res.json({ ...sales.summarise(ordersStore.all(), o), today: sales.todayUk(), storage: ordersStore.status() });
+});
+
+router.get('/sales/csv', (req, res) => {
+  const o = salesOpts(req, res);
+  if (!o) return;
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="po-ke-mart-fun-orders-${o.from}-to-${o.to}.csv"`);
+  res.send('\uFEFF' + sales.toCsv(ordersStore.all(), o)); // BOM so Excel reads £ / accents correctly
+});
+
+router.get('/sales/xlsx', async (req, res) => {
+  const o = salesOpts(req, res);
+  if (!o) return;
+  try {
+    const buf = await require('./sales-xlsx').toXlsx(ordersStore.all(), o);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="po-ke-mart-fun-sales-${o.from}-to-${o.to}.xlsx"`);
+    res.send(buf);
+  } catch (err) {
+    res.status(500).json({ error: 'Could not build the Excel file: ' + err.message });
+  }
+});
+
+// Status workflow: paid -> posted (tracking number) -> optionally refunded / cancelled
+router.patch('/orders/:id', async (req, res) => {
+  const cur = ordersStore.find(req.params.id);
+  if (!cur) return res.status(404).json({ error: 'Order not found' });
+  const b = req.body || {};
+  const patch = {};
+  if (b.status !== undefined) {
+    if (!ordersStore.STATUSES.includes(b.status)) return res.status(400).json({ error: 'Status must be paid, posted, refunded or cancelled' });
+    patch.status = b.status;
+    if (b.status === 'posted' && !cur.posted_at) patch.posted_at = new Date().toISOString();
+    if (b.status === 'refunded' || b.status === 'cancelled') patch[`${b.status}_at`] = new Date().toISOString();
+  }
+  if (b.tracking_number !== undefined) {
+    const t = String(b.tracking_number).toUpperCase().replace(/\s+/g, '').slice(0, 40);
+    if (t && !/^[A-Z0-9-]{6,40}$/.test(t)) return res.status(400).json({ error: 'Tracking number can only contain letters and numbers' });
+    patch.tracking_number = t;
+  }
+  if ((patch.status || cur.status) === 'posted' && !(patch.tracking_number !== undefined ? patch.tracking_number : cur.tracking_number)) {
+    return res.status(400).json({ error: 'Add the Royal Mail tracking number to mark the order as posted' });
+  }
+  if (b.postage_paid !== undefined) {
+    if (b.postage_paid === '' || b.postage_paid === null) patch.postage_paid = null;
+    else {
+      const n = Number(b.postage_paid);
+      if (!Number.isFinite(n) || n < 0 || n > 200) return res.status(400).json({ error: 'Postage paid must be an amount in £' });
+      patch.postage_paid = Math.round(n * 100) / 100;
+    }
+  }
+  if (b.note !== undefined) patch.note = String(b.note).slice(0, 500);
+  const r = await ordersStore.update(cur.id, patch);
+  if (r.error) return res.status(400).json({ error: r.error });
+  res.json({ order: r.order, github: r.github, githubError: r.githubError, storage: ordersStore.status() });
+});
+
+router.post('/orders/retry-sync', async (_req, res) => {
+  res.json({ ...(await ordersStore.retryPending()), storage: ordersStore.status() });
 });
 
 router.delete('/products/:id', async (req, res) => {

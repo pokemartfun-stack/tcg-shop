@@ -22,10 +22,10 @@ const {
   buildStripeLineItems,
   createDemoOrder,
 } = require('./payments');
+const postage = require('./postage');
 
 const PORT = Number(process.env.PORT) || 3847;
 const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
-const ORDERS_PATH = path.join(__dirname, '..', 'data', 'orders.json');
 const SESSIONS = new Map(); // token -> { userId, cart, createdAt }
 
 const productStore = require('./products-store');
@@ -37,8 +37,39 @@ function stockError(res, problems, products, cart) {
   return res.status(409).json({
     error: problems.map((p) => p.error).join('; '),
     problems,
-    cart: enrichCart(cart, products),
+    cart: enrich(cart, products),
   });
+}
+
+/** Cart with server-calculated Royal Mail postage + order total (never trusts the browser). */
+function enrich(cart, products) {
+  return enrichCart(cart, products, settingsStore.get().postage);
+}
+
+/**
+ * Email + UK delivery address sent by the checkout page. Logged-in users can leave the email
+ * blank (their account email is used). Returns { email, address } or { error, field }.
+ */
+function checkoutDetails(req, user) {
+  const body = req.body || {};
+  const email = String(body.email || (user && user.email) || '').trim().slice(0, 120);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: 'Enter your email address so we can send the receipt and tracking number', field: 'email' };
+  const a = postage.validateAddress(body.address);
+  if (a.error) return a;
+  return { email, address: a.address };
+}
+
+function detailsError(res, d) {
+  return res.status(400).json({ error: d.error, field: d.field });
+}
+
+/** Postage fields stored on every order record. */
+function orderPostage(enriched) {
+  const q = enriched.postage;
+  return {
+    postage: { service: q.service, band: q.band, amount: q.amount, free: q.free },
+    total: q.total,
+  };
 }
 
 function cartLines(enriched) {
@@ -49,19 +80,23 @@ function loadProducts() {
   return productStore.get();
 }
 
-function loadOrders() {
-  try {
-    if (!fs.existsSync(ORDERS_PATH)) return [];
-    return JSON.parse(fs.readFileSync(ORDERS_PATH, 'utf8'));
-  } catch {
-    return [];
-  }
+const ordersStore = require('./orders-store');
+
+/**
+ * Save an order: copies each item's cost price (admin only, never shown to shoppers) onto the
+ * order lines so profit stays the same even if the cost price is edited later, then stores the
+ * order in the private orders repo (or the local file as a fallback).
+ */
+async function saveOrder(order) {
+  const items = (order.items || []).map((l) => ({ ...l, cost_gbp: ordersStore.getCost(l.productId) }));
+  const r = await ordersStore.add({ ...order, items });
+  return r.order;
 }
 
-function saveOrder(order) {
-  const orders = loadOrders();
-  orders.push(order);
-  fs.writeFileSync(ORDERS_PATH, JSON.stringify(orders, null, 2), 'utf8');
+/** Products as shown to shoppers: no cost prices. */
+function publicProduct(p) {
+  const { cost_gbp, ...rest } = p; // eslint-disable-line no-unused-vars
+  return rest;
 }
 
 function getSession(req) {
@@ -147,18 +182,18 @@ app.get('/api/settings', (_req, res) => {
 });
 
 app.get('/api/products', (_req, res) => {
-  res.json(loadProducts());
+  res.json(loadProducts().map(publicProduct));
 });
 
 app.get('/api/products/:id', (req, res) => {
   const p = loadProducts().find((x) => x.id === req.params.id);
   if (!p) return res.status(404).json({ error: 'Not found' });
-  res.json(p);
+  res.json(publicProduct(p));
 });
 
 app.get('/api/cart', (req, res) => {
   const products = loadProducts();
-  const enriched = enrichCart(req.session.cart, products);
+  const enriched = enrich(req.session.cart, products);
   enriched.problems = productStore.checkStock(cartLines(enriched));
   res.json(enriched);
 });
@@ -167,23 +202,23 @@ app.post('/api/cart/add', (req, res) => {
   const products = loadProducts();
   const { productId, qty } = req.body || {};
   const result = addToCart(req.session.cart, products, productId, qty);
-  if (!result.ok) return res.status(400).json({ error: result.error, cart: enrichCart(req.session.cart, products) });
-  res.json(enrichCart(req.session.cart, products));
+  if (!result.ok) return res.status(400).json({ error: result.error, cart: enrich(req.session.cart, products) });
+  res.json(enrich(req.session.cart, products));
 });
 
 app.post('/api/cart/set-qty', (req, res) => {
   const products = loadProducts();
   const { productId, qty } = req.body || {};
   const result = setQty(req.session.cart, products, productId, qty);
-  if (!result.ok) return res.status(400).json({ error: result.error, cart: enrichCart(req.session.cart, products) });
-  res.json(enrichCart(req.session.cart, products));
+  if (!result.ok) return res.status(400).json({ error: result.error, cart: enrich(req.session.cart, products) });
+  res.json(enrich(req.session.cart, products));
 });
 
 app.post('/api/cart/remove', (req, res) => {
   const products = loadProducts();
   const { productId } = req.body || {};
   removeFromCart(req.session.cart, productId);
-  res.json(enrichCart(req.session.cart, products));
+  res.json(enrich(req.session.cart, products));
 });
 
 app.post('/api/auth/register', (req, res) => {
@@ -214,27 +249,33 @@ app.get('/api/auth/me', (req, res) => {
 
 app.post('/api/checkout/demo', async (req, res) => {
   const products = loadProducts();
-  const enriched = enrichCart(req.session.cart, products);
+  const enriched = enrich(req.session.cart, products);
   if (!enriched.items.length) {
     return res.status(400).json({ error: 'Your cart is empty' });
   }
+  const problems = productStore.checkStock(cartLines(enriched));
+  if (problems.length) return stockError(res, problems, products, req.session.cart);
+  const user = req.session.userId ? auth.findById(req.session.userId) : null;
+  const details = checkoutDetails(req, user);
+  if (details.error) return detailsError(res, details);
   const taken = await productStore.decrementStock(cartLines(enriched), 'demo order');
   if (!taken.ok) return stockError(res, taken.problems, products, req.session.cart);
-  const mode = paymentMode(process.env);
-  if (!mode.demo && (mode.stripe || mode.paypal)) {
-    // Still allow demo if explicitly requested, but note live keys exist
-  }
-  const user = req.session.userId ? auth.findById(req.session.userId) : null;
-  const email = (req.body && req.body.email) || (user && user.email) || null;
   const order = createDemoOrder({
     enriched,
     method: (req.body && req.body.method) || 'demo',
-    email,
+    email: details.email,
     userId: user && user.id,
+    address: details.address,
   });
-  saveOrder(order);
+  await saveOrder(order);
   req.session.cart = emptyCart();
   res.json({ order });
+});
+
+// Server-calculated totals for the checkout page and the PayPal button (amount never comes from the browser).
+app.get('/api/checkout/quote', (req, res) => {
+  const enriched = enrich(req.session.cart, loadProducts());
+  res.json({ subtotal: enriched.subtotal, postage: enriched.postage, total: enriched.total, count: enriched.count });
 });
 
 app.post('/api/checkout/stripe', async (req, res) => {
@@ -246,20 +287,24 @@ app.post('/api/checkout/stripe', async (req, res) => {
     });
   }
   const products = loadProducts();
-  const enriched = enrichCart(req.session.cart, products);
+  const enriched = enrich(req.session.cart, products);
   if (!enriched.items.length) {
     return res.status(400).json({ error: 'Your cart is empty' });
   }
   const problems = productStore.checkStock(cartLines(enriched));
   if (problems.length) return stockError(res, problems, products, req.session.cart);
+  const user = req.session.userId ? auth.findById(req.session.userId) : null;
+  const details = checkoutDetails(req, user);
+  if (details.error) return detailsError(res, details);
   try {
     const Stripe = require('stripe');
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-    const user = req.session.userId ? auth.findById(req.session.userId) : null;
-    const email = (req.body && req.body.email) || (user && user.email) || undefined;
+    const email = details.email;
     const session = await createStripeCheckoutSession({
       stripe,
       lineItems: buildStripeLineItems(enriched),
+      shipping: enriched.postage, // Royal Mail Tracked 48, calculated on the server
+      address: details.address,
       successUrl: `${BASE_URL}/success.html?session_id={CHECKOUT_SESSION_ID}`,
       cancelUrl: `${BASE_URL}/cart.html`,
       customerEmail: email,
@@ -267,6 +312,7 @@ app.post('/api/checkout/stripe', async (req, res) => {
     PENDING_STRIPE.set(session.id, {
       enriched,
       email: email || null,
+      address: details.address,
       userId: (user && user.id) || null,
       done: false,
     });
@@ -293,14 +339,19 @@ app.get('/api/checkout/stripe/session/:id', async (req, res) => {
         pending.done = true;
         // Paid already, so take whatever stock is left and flag any shortfall for the owner.
         const taken = await productStore.decrementStock(cartLines(pending.enriched), `stripe ${session.id}`);
-        saveOrder({
+        await saveOrder({
           id: session.id,
-          status: taken.ok ? 'paid' : 'paid_stock_conflict',
+          status: 'paid',
+          demo: false,
+          stock_conflict: !taken.ok,
           method: 'stripe',
           email: pending.email,
           userId: pending.userId,
           items: pending.enriched.items,
           subtotal: pending.enriched.subtotal,
+          ...orderPostage(pending.enriched),
+          amount_paid: session.amount_total != null ? session.amount_total / 100 : null,
+          shipping_address: pending.address,
           currency: 'GBP',
           stockProblems: taken.problems,
           createdAt: new Date().toISOString(),
@@ -323,40 +374,52 @@ app.get('/api/checkout/stripe/session/:id', async (req, res) => {
 // Pre-flight stock check used by the PayPal button before it opens the PayPal window.
 app.get('/api/checkout/stock-check', (req, res) => {
   const products = loadProducts();
-  const enriched = enrichCart(req.session.cart, products);
+  const enriched = enrich(req.session.cart, products);
   const problems = productStore.checkStock(cartLines(enriched));
   if (problems.length) return stockError(res, problems, products, req.session.cart);
-  res.json({ ok: true });
+  res.json({ ok: true, subtotal: enriched.subtotal, postage: enriched.postage, total: enriched.total });
 });
 
 app.post('/api/checkout/paypal/record', async (req, res) => {
   const mode = paymentMode(process.env);
   const products = loadProducts();
-  const enriched = enrichCart(req.session.cart, products);
+  const enriched = enrich(req.session.cart, products);
   if (!enriched.items.length) {
     return res.status(400).json({ error: 'Your cart is empty' });
   }
   const livePaid = Boolean(mode.paypal && req.body && req.body.paypalOrderId);
+  if (!livePaid) {
+    const problems = productStore.checkStock(cartLines(enriched));
+    if (problems.length) return stockError(res, problems, products, req.session.cart);
+  }
+  const user = req.session.userId ? auth.findById(req.session.userId) : null;
+  const details = checkoutDetails(req, user);
+  // The PayPal page only opens after the same check passed in the browser, so a paid order is
+  // always recorded; a missing address is flagged on the order instead of losing the payment.
+  if (details.error && !livePaid) return detailsError(res, details);
   const taken = await productStore.decrementStock(cartLines(enriched), 'paypal order');
   if (!taken.ok && !livePaid) return stockError(res, taken.problems, products, req.session.cart);
-  const user = req.session.userId ? auth.findById(req.session.userId) : null;
-  const email = (req.body && req.body.email) || (user && user.email) || null;
   const order = {
     id: (req.body && req.body.paypalOrderId) || `pp_${crypto.randomUUID().slice(0, 8)}`,
-    status: !taken.ok ? 'paypal_paid_stock_conflict' : mode.paypal ? 'paypal_client_complete' : 'demo_complete',
+    status: 'paid',
+    demo: !livePaid,
+    stock_conflict: !taken.ok,
     stockProblems: taken.problems,
     method: 'paypal',
-    email,
+    email: details.email || (req.body && req.body.email) || (user && user.email) || null,
     userId: user && user.id,
     items: enriched.items,
     subtotal: enriched.subtotal,
+    ...orderPostage(enriched),
+    shipping_address: details.address || null,
+    address_problem: details.error || undefined,
     currency: 'GBP',
     message: mode.paypal
       ? 'PayPal payment recorded from client SDK.'
       : 'Demo PayPal — no money taken. Set PAYPAL_CLIENT_ID for live PayPal buttons.',
     createdAt: new Date().toISOString(),
   };
-  saveOrder(order);
+  await saveOrder(order);
   req.session.cart = emptyCart();
   res.json({ order });
 });
@@ -371,6 +434,10 @@ if (require.main === module) {
       .pullFromGitHub()
       .then((ok) => ok && console.log('Loaded products.json from GitHub'))
       .catch((err) => console.error('Could not load products from GitHub, using local file:', err.message)),
+    ordersStore
+      .pullFromGitHub()
+      .then((ok) => ok && console.log(`Loaded ${ordersStore.all().length} orders from the private orders repo`))
+      .catch((err) => console.error('Could not load orders from the orders repo:', err.message)),
     settingsStore
       .pullFromGitHub()
       .then((ok) => ok && console.log('Loaded settings.json from GitHub'))
@@ -384,6 +451,8 @@ if (require.main === module) {
         : `Payment mode: stripe=${mode.stripe} paypal=${mode.paypal}`
     );
     console.log(process.env.ADMIN_PASSWORD ? 'Admin page: /admin' : 'Admin page disabled (set ADMIN_PASSWORD)');
+    const ost = ordersStore.status();
+    console.log(ost.mode === 'github' ? `Orders: private repo ${ost.repo}${ost.warning ? ' — WARNING: ' + ost.warning : ''}` : 'WARNING: ' + ost.warning);
   }));
 }
 
