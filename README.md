@@ -54,6 +54,35 @@ cp .env.example .env
   - Your domain verified for Apple Pay in the [Stripe Dashboard](https://dashboard.stripe.com/settings/payments/apple_pay)
 - On localhost, use Stripe test keys and card number `4242 4242 4242 4242` (any future expiry, any CVC).
 
+### Stripe webhook (records paid orders even if the customer closes the page)
+
+Without the webhook, a card order is only recorded when the customer's browser reaches the
+success page. With it, Stripe tells the shop directly that the payment went through.
+
+1. In the [Stripe Dashboard](https://dashboard.stripe.com/webhooks) open **Developers → Webhooks**
+   and click **Add endpoint**.
+2. Endpoint URL: `https://tcg-shop-1.onrender.com/api/stripe/webhook`
+3. Events to send: `checkout.session.completed` and `checkout.session.async_payment_succeeded`.
+4. Save, then click **Reveal** under *Signing secret* and copy the value (starts with `whsec_`).
+5. On Render, open `tcg-shop-1` → **Environment** and add `STRIPE_WEBHOOK_SECRET` with that value.
+   Save (Render restarts the shop).
+
+How it works:
+
+- `POST /api/stripe/webhook` reads the raw request body and checks the `Stripe-Signature` header
+  with `STRIPE_WEBHOOK_SECRET` (`stripe.webhooks.constructEvent`). A bad or missing signature gets
+  `400`. If `STRIPE_WEBHOOK_SECRET` isn't set the route answers `503` and everything else works as
+  before (orders are then recorded by the success page only).
+- Only sessions with `payment_status: paid` are recorded. The webhook and the success page use the
+  same code, keyed by the Stripe session id (the order id), so an order is recorded **once** and
+  stock is taken **once**, whichever arrives first — also when Stripe resends an event.
+- Checkout stores what the order needs in the session's metadata (cart lines as
+  `productId:qty:pricePence`, postage, delivery address, email), within Stripe's limits (50 keys,
+  500 characters per value), so the order can be rebuilt without the customer's browser or
+  after a server restart.
+- Test locally with the Stripe CLI: `stripe listen --forward-to localhost:3847/api/stripe/webhook`
+  (it prints a temporary `whsec_…` to put in `.env`).
+
 ### PayPal
 
 - When `PAYPAL_CLIENT_ID` is set, the PayPal JS SDK button renders on the checkout page.
@@ -83,6 +112,7 @@ Placeholder SVG images live in `public/images/` (no official Pokemon artwork).
 | POST | `/api/auth/register`, `/login`, `/logout` | Optional accounts |
 | POST | `/api/checkout/demo` | Fake order |
 | POST | `/api/checkout/stripe` | Live Stripe Checkout URL |
+| POST | `/api/stripe/webhook` | Stripe webhook (needs `STRIPE_WEBHOOK_SECRET`, else 503) |
 | GET | `/api/config` | Payment mode + current user |
 
 ## Demo vs live
@@ -123,7 +153,7 @@ Every admin change shows on the shop straight away and is also committed to `dat
 - The server checks stock when a card is added to the cart, when a quantity is changed, and again at checkout (demo, PayPal and Stripe). If a quantity is more than what's in stock, it refuses with an error, and the cart page shows what needs changing.
 - When an order completes (demo, PayPal, or Stripe once payment is confirmed), the stock goes down and is saved through the products store. That writes the local file and, if `GITHUB_TOKEN` is set, also commits it to GitHub.
 - Admin restock: type a quantity and click **Save**, use **−1 / +1**, or use **Restock +N**. Out-of-stock cards appear first, highlighted in red, and there's a "Show out-of-stock only" filter.
-- Note: a Stripe order takes stock off when the buyer lands back on the success page. If the server restarts between payment and that page, the stock won't go down for that order. A Stripe webhook would close that gap later.
+- A Stripe order takes stock off when it is recorded: by the Stripe webhook (if `STRIPE_WEBHOOK_SECRET` is set) or when the buyer lands back on the success page, whichever comes first — never twice.
 
 ## Storefront filters
 

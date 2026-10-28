@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "node server/index.js",
-    "test": "node --test test/cart.test.js test/products.test.js test/auth.test.js test/admin.test.js test/stock.test.js test/import-photos.test.js test/github-sync.test.js test/photo-order.test.js test/page-render.test.js test/categories.test.js test/postage.test.js test/sales.test.js test/orders-store.test.js"
+    "test": "node --test test/cart.test.js test/products.test.js test/auth.test.js test/admin.test.js test/stock.test.js test/import-photos.test.js test/github-sync.test.js test/photo-order.test.js test/page-render.test.js test/categories.test.js test/postage.test.js test/sales.test.js test/orders-store.test.js test/stripe-webhook.test.js"
   },
   "engines": {
     "node": ">=18"
