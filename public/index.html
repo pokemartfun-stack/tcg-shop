@@ -45,6 +45,7 @@
   <main class="container">
     <section class="hero">
       <p>Browse cards, add to cart, and checkout with PayPal, bank card, or Apple Pay. Guest checkout welcome — account optional.</p>
+      <a class="rating-pill" id="rating-pill" href="#reviews" hidden><span class="stars" aria-hidden="true" data-stars></span> <strong data-avg></strong> <span data-count></span></a>
       <div id="mode-banner" class="banner" hidden></div>
     </section>
 
@@ -87,6 +88,62 @@
     </section>
 
     <section id="product-grid" class="grid" aria-live="polite"></section>
+
+    <!-- Customer reviews: only shown when the owner switches them on (admin → Customer reviews) -->
+    <section class="reviews" id="reviews" aria-labelledby="reviews-title" hidden>
+      <div class="reviews-head">
+        <h2 id="reviews-title" class="reviews-title">Trainer Reviews</h2>
+        <div class="reviews-summary" id="reviews-summary">
+          <div class="reviews-avg"><span class="avg-num" id="reviews-avg">–</span><span class="stars big" id="reviews-avg-stars" aria-hidden="true"></span><span class="hint" id="reviews-count">No reviews yet</span></div>
+          <div class="reviews-bars" id="reviews-bars" aria-hidden="true"></div>
+        </div>
+        <button type="button" class="btn" id="review-open" aria-expanded="false" aria-controls="review-form">★ Leave a review</button>
+      </div>
+
+      <form class="review-form panel" id="review-form" hidden novalidate>
+        <h3>Leave a review</h3>
+        <p class="hint">Reviews are checked by us before they appear on the shop.</p>
+        <fieldset class="star-picker" id="star-picker">
+          <legend>Your rating</legend>
+          <div class="star-row">
+            <input type="radio" name="rating" id="star5" value="5" /><label for="star5" title="5 stars — Amazing">★<span class="sr">5 stars</span></label>
+            <input type="radio" name="rating" id="star4" value="4" /><label for="star4" title="4 stars — Great">★<span class="sr">4 stars</span></label>
+            <input type="radio" name="rating" id="star3" value="3" /><label for="star3" title="3 stars — Good">★<span class="sr">3 stars</span></label>
+            <input type="radio" name="rating" id="star2" value="2" /><label for="star2" title="2 stars — Poor">★<span class="sr">2 stars</span></label>
+            <input type="radio" name="rating" id="star1" value="1" /><label for="star1" title="1 star — Bad">★<span class="sr">1 star</span></label>
+          </div>
+          <span class="star-word" id="star-word" aria-live="polite"></span>
+          <span class="field-error" data-err="rating"></span>
+        </fieldset>
+        <div class="form-grid">
+          <div class="form-row">
+            <label for="rv-name">Your name</label>
+            <input id="rv-name" name="name" maxlength="40" autocomplete="given-name" required />
+            <span class="field-error" data-err="name"></span>
+          </div>
+          <div class="form-row">
+            <label for="rv-order">Order number <span class="hint">(optional)</span></label>
+            <input id="rv-order" name="order" maxlength="60" autocomplete="off" />
+            <span class="field-error" data-err="order"></span>
+          </div>
+          <div class="form-row span-2">
+            <label for="rv-comment">Your review</label>
+            <textarea id="rv-comment" name="comment" rows="4" minlength="10" maxlength="1000" required placeholder="How were the cards, the packaging and the postage?"></textarea>
+            <span class="hint"><span id="rv-chars">0</span>/1000</span>
+            <span class="field-error" data-err="comment"></span>
+          </div>
+        </div>
+        <!-- honeypot: hidden from people, bots fill it in -->
+        <div class="hp" aria-hidden="true"><label>Website <input name="website" tabindex="-1" autocomplete="off" /></label></div>
+        <div class="review-actions">
+          <button type="submit" class="btn" id="rv-submit">Send review</button>
+          <button type="button" class="btn ghost" id="rv-cancel">Cancel</button>
+        </div>
+        <p class="review-msg" id="review-msg" role="status"></p>
+      </form>
+
+      <div class="review-list" id="review-list"></div>
+    </section>
   </main>
 
   <footer class="site-footer">
@@ -97,5 +154,6 @@
   <script src="/js/api.js"></script>
   <script src="/js/app.js"></script>
   <script src="/js/shop.js"></script>
+  <script src="/js/reviews.js"></script>
 </body>
 </html>

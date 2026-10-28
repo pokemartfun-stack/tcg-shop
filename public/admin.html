@@ -52,6 +52,33 @@
     .admin .logo-nav-demo span { font-family: 'Luckiest Guy', sans-serif; font-size: 22px; color: #FFCB05; -webkit-text-stroke: 5px #2A75BB; paint-order: stroke fill; text-shadow: 2px 3px 0 #1D2C5E; padding-top: 3px; }
     .admin .filterbar { margin-bottom: 8px; }
     @media (max-width: 700px) { .admin table thead { display: none; } .admin table tr { display: grid; grid-template-columns: 50px 1fr; gap: 4px; border-bottom: 1px solid #8884; padding: 6px 0; } .admin table td { border: 0; } .admin table td:first-child { grid-row: span 5; } }
+    /* ---- Customer reviews ---- */
+    .rv-toggle-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 8px; }
+    .switch { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 700; }
+    .switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+    .switch .slider { width: 52px; height: 28px; border-radius: 99px; background: #6b7280; position: relative; transition: background .15s; flex: none; box-shadow: inset 0 0 0 2px #0003; }
+    .switch .slider::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; transition: transform .15s; box-shadow: 0 1px 3px #0006; }
+    .switch input:checked + .slider { background: #15803d; }
+    .switch input:checked + .slider::after { transform: translateX(24px); }
+    .switch input:focus-visible + .slider { outline: 3px solid #FFCB05; outline-offset: 2px; }
+    .rv-filters { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0 10px; }
+    .admin button.rv-filter { background: #1D2C5E; color: #d5dcef; border: 1px solid #FFCB0544; border-radius: 999px; padding: 4px 12px; font-size: 13px; }
+    .admin button.rv-filter.on { background: #FFCB05; color: #1D2C5E; font-weight: 800; }
+    .admin .rv-table { min-width: 820px; }
+    .rv-table td.rv-text { max-width: 380px; white-space: pre-line; overflow-wrap: anywhere; }
+    .rv-table td:first-child { white-space: nowrap; }
+    .rv-stars { color: #FFCB05; letter-spacing: 1px; white-space: nowrap; }
+    .rv-stars .off { color: #8886; }
+    .rv-status { display: inline-block; padding: 1px 8px; border-radius: 99px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+    .rv-status.pending { background: #f59e0b33; color: #fbbf24; border: 1px solid #f59e0b88; }
+    .rv-status.approved { background: #15803d33; color: #4ade80; border: 1px solid #16a34a88; }
+    .rv-status.hidden { background: #6b728033; color: #cbd5e1; border: 1px solid #6b728088; }
+    .rv-feat { white-space: nowrap; display: inline-block; margin-top: 3px; padding: 1px 8px; border-radius: 99px; font-size: 11px; font-weight: 800; background: #FFCB05; color: #1D2C5E; }
+    .rv-actions { display: flex; gap: 4px; flex-wrap: wrap; }
+    .admin .rv-actions button { padding: 4px 9px; font-size: 12px; }
+    .admin button.show { background: #15803d; }
+    .admin button.feature { background: #FFCB05; color: #1D2C5E; font-weight: 700; }
+    .rv-verified { color: #4ade80; font-size: 11px; display: block; }
     #msg { position: sticky; top: 0; z-index: 10; min-height: 0; font-weight: 600; white-space: pre-line; margin: 0 0 12px; border-radius: 8px; }
     #msg:empty { display: none; }
     #msg.err { color: #fff; background: #b91c1c; padding: 10px 14px; } #msg.ok { color: #fff; background: #15803d; padding: 10px 14px; }
@@ -157,7 +184,7 @@
 
     <div id="panel" hidden>
       <p><span id="sync"></span> · <a href="/" target="_blank">View shop</a> · <button class="ghost" id="logout">Log out</button></p>
-      <nav class="admin-nav" aria-label="Admin sections"><a href="#sales-section">Sales</a><a href="#postage-section">Postage</a><a href="#import-section">Import</a><a href="#add-section">Add product</a><a href="#cards-section">Cards</a><a href="#banner-section">Shop look</a></nav>
+      <nav class="admin-nav" aria-label="Admin sections"><a href="#sales-section">Sales</a><a href="#reviews-section">Reviews</a><a href="#postage-section">Postage</a><a href="#import-section">Import</a><a href="#add-section">Add product</a><a href="#cards-section">Cards</a><a href="#banner-section">Shop look</a></nav>
       <div class="storage-warn" id="orders-warn" hidden></div>
 
       <section id="sales-section" class="sales">
@@ -195,6 +222,26 @@
           </form>
         </details>
         <div class="result" id="sales-result"></div>
+      </section>
+
+      <section id="reviews-section">
+        <h2>Customer reviews <span class="hint" id="rv-counts"></span></h2>
+        <div class="rv-toggle-row">
+          <label class="switch"><input type="checkbox" id="rv-enabled" /><span class="slider" aria-hidden="true"></span><span class="switch-text" id="rv-enabled-text">Reviews are OFF</span></label>
+          <span class="hint">On: the shop shows the star rating, the approved reviews and the "Leave a review" form. Off: all of it is hidden and new reviews are refused.</span>
+        </div>
+        <p class="hint">New reviews arrive as <strong>Pending</strong> and only appear on the shop after you press <strong>Show</strong>. <strong>Feature</strong> pins a review to the top of the list (and shows it). Reviews are saved in the private orders repo with the orders.</p>
+        <div class="rv-filters" role="group" aria-label="Show reviews">
+          <button type="button" class="rv-filter on" data-filter="pending">Pending</button>
+          <button type="button" class="rv-filter" data-filter="approved">Shown</button>
+          <button type="button" class="rv-filter" data-filter="hidden">Hidden</button>
+          <button type="button" class="rv-filter" data-filter="featured">Featured</button>
+          <button type="button" class="rv-filter" data-filter="all">All</button>
+        </div>
+        <div class="sales-scroll"><table class="sales-table rv-table">
+          <thead><tr><th>Date (UK)</th><th>Stars</th><th>Name</th><th>Review</th><th>Order no.</th><th>Status</th><th></th></tr></thead>
+          <tbody id="rv-rows"></tbody>
+        </table></div>
       </section>
 
       <section id="banner-section">
@@ -355,5 +402,6 @@
   <script src="/js/categories.js"></script>
   <script src="/js/admin.js"></script>
   <script src="/js/admin-sales.js"></script>
+  <script src="/js/admin-reviews.js"></script>
 </body>
 </html>
