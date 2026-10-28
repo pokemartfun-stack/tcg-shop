@@ -16,12 +16,15 @@ const {
   enrichCart,
 } = require('./cart');
 const auth = require('./auth');
+const payments = require('./payments');
 const {
   paymentMode,
   createStripeCheckoutSession,
   buildStripeLineItems,
   createDemoOrder,
-} = require('./payments');
+  orderMetadata,
+  orderFromSessionMetadata,
+} = payments;
 const postage = require('./postage');
 
 const PORT = Number(process.env.PORT) || 3847;
@@ -130,7 +133,91 @@ function setSessionCookie(res, token) {
   );
 }
 
+// ---------------- Stripe: record a paid Checkout Session exactly once ----------------
+const STRIPE_RECORDING = new Map(); // stripe session id -> in-flight recording promise
+
+/**
+ * Record a paid Stripe Checkout Session as an order. Used by BOTH the success page and the
+ * webhook, so it is idempotent on the session id: whichever arrives first records the order and
+ * takes the stock; the other one finds the existing order and does nothing.
+ * Order details come from the in-memory checkout (same server process) or, failing that, from the
+ * session metadata written at checkout — so no browser cookie is needed.
+ * Returns { recorded: true|false, order|null, reason? }.
+ */
+function recordStripeSession(session, source) {
+  if (!session || !session.id) return Promise.resolve({ recorded: false, order: null, reason: 'no session' });
+  if (session.payment_status !== 'paid') return Promise.resolve({ recorded: false, order: null, reason: 'not paid' });
+  const existing = ordersStore.find(session.id);
+  if (existing) return Promise.resolve({ recorded: false, order: existing, reason: 'already recorded' });
+  if (STRIPE_RECORDING.has(session.id)) {
+    return STRIPE_RECORDING.get(session.id).then((r) => ({ ...r, recorded: false, reason: 'already recorded' }));
+  }
+  const work = (async () => {
+    const pending = PENDING_STRIPE.get(session.id);
+    const data = pending || orderFromSessionMetadata(session, loadProducts());
+    if (!data) {
+      console.error(`Stripe session ${session.id} is paid but has no order details (no metadata) — check the Stripe dashboard`);
+      return { recorded: false, order: null, reason: 'no order details' };
+    }
+    // Paid already, so take whatever stock is left and flag any shortfall for the owner.
+    const taken = await productStore.decrementStock(cartLines(data.enriched), `stripe ${session.id}`);
+    const details = session.customer_details || {};
+    const order = await saveOrder({
+      id: session.id,
+      status: 'paid',
+      demo: false,
+      stock_conflict: !taken.ok,
+      method: 'stripe',
+      email: data.email || session.customer_email || details.email || null,
+      userId: data.userId || null,
+      items: data.enriched.items,
+      subtotal: data.enriched.subtotal,
+      ...(data.enriched.postage ? orderPostage(data.enriched) : { postage: null, total: data.enriched.subtotal }),
+      amount_paid: session.amount_total != null ? session.amount_total / 100 : null,
+      shipping_address: data.address || null,
+      currency: 'GBP',
+      stockProblems: taken.problems,
+      recorded_by: source,
+      createdAt: new Date().toISOString(),
+    });
+    if (pending) pending.done = true;
+    return { recorded: true, order };
+  })();
+  STRIPE_RECORDING.set(session.id, work);
+  // Once saved, ordersStore.find() takes over; on failure allow a retry (e.g. Stripe resends the webhook).
+  work.then((r) => { if (!r.recorded) STRIPE_RECORDING.delete(session.id); }, () => STRIPE_RECORDING.delete(session.id));
+  return work;
+}
+
+const STRIPE_WEBHOOK_EVENTS = ['checkout.session.completed', 'checkout.session.async_payment_succeeded'];
+
 const app = express();
+// Stripe webhook: needs the RAW body for the signature check, so it is registered before express.json.
+app.post('/api/stripe/webhook', express.raw({ type: '*/*', limit: '1mb' }), async (req, res) => {
+  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!secret) return res.status(503).json({ error: 'Stripe webhook not configured (set STRIPE_WEBHOOK_SECRET)' });
+  let event;
+  try {
+    const sig = req.headers['stripe-signature'];
+    if (!sig) throw new Error('Missing Stripe-Signature header');
+    const body = Buffer.isBuffer(req.body) ? req.body : Buffer.from('');
+    event = payments.getStripe().webhooks.constructEvent(body, sig, secret);
+  } catch (err) {
+    return res.status(400).json({ error: `Webhook signature check failed: ${err.message}` });
+  }
+  if (!STRIPE_WEBHOOK_EVENTS.includes(event.type)) return res.json({ received: true, ignored: event.type });
+  const session = event.data && event.data.object;
+  if (!session || session.payment_status !== 'paid') {
+    return res.json({ received: true, recorded: false, reason: 'not paid yet' });
+  }
+  try {
+    const r = await recordStripeSession(session, 'webhook');
+    res.json({ received: true, recorded: r.recorded, reason: r.reason, orderId: r.order ? r.order.id : null });
+  } catch (err) {
+    console.error('Stripe webhook: could not record order', session.id, err);
+    res.status(500).json({ error: 'Could not record order' }); // Stripe retries
+  }
+});
 app.use(express.json({ limit: '5mb' }));
 app.use(parseCookies);
 app.use('/api/admin', admin.router);
@@ -297,8 +384,7 @@ app.post('/api/checkout/stripe', async (req, res) => {
   const details = checkoutDetails(req, user);
   if (details.error) return detailsError(res, details);
   try {
-    const Stripe = require('stripe');
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    const stripe = payments.getStripe();
     const email = details.email;
     const session = await createStripeCheckoutSession({
       stripe,
@@ -308,6 +394,7 @@ app.post('/api/checkout/stripe', async (req, res) => {
       successUrl: `${BASE_URL}/success.html?session_id={CHECKOUT_SESSION_ID}`,
       cancelUrl: `${BASE_URL}/cart.html`,
       customerEmail: email,
+      metadata: orderMetadata({ enriched, address: details.address, email, userId: user && user.id }) || undefined,
     });
     PENDING_STRIPE.set(session.id, {
       enriched,
@@ -329,34 +416,11 @@ app.get('/api/checkout/stripe/session/:id', async (req, res) => {
     return res.status(400).json({ error: 'Stripe not configured' });
   }
   try {
-    const Stripe = require('stripe');
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    const stripe = payments.getStripe();
     const session = await stripe.checkout.sessions.retrieve(req.params.id);
     if (session.payment_status === 'paid') {
       req.session.cart = emptyCart();
-      const pending = PENDING_STRIPE.get(session.id);
-      if (pending && !pending.done) {
-        pending.done = true;
-        // Paid already, so take whatever stock is left and flag any shortfall for the owner.
-        const taken = await productStore.decrementStock(cartLines(pending.enriched), `stripe ${session.id}`);
-        await saveOrder({
-          id: session.id,
-          status: 'paid',
-          demo: false,
-          stock_conflict: !taken.ok,
-          method: 'stripe',
-          email: pending.email,
-          userId: pending.userId,
-          items: pending.enriched.items,
-          subtotal: pending.enriched.subtotal,
-          ...orderPostage(pending.enriched),
-          amount_paid: session.amount_total != null ? session.amount_total / 100 : null,
-          shipping_address: pending.address,
-          currency: 'GBP',
-          stockProblems: taken.problems,
-          createdAt: new Date().toISOString(),
-        });
-      }
+      await recordStripeSession(session, 'success page');
     }
     res.json({
       id: session.id,
