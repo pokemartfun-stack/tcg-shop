@@ -258,6 +258,41 @@ the totals (demo can be included with the tick box). "Download CSV" and "Downloa
 plus an Orders sheet with one row per order line, real £ numbers and dd/mm/yyyy dates) follow the chosen
 dates, for your self-assessment records. Fees are estimates — your Stripe/PayPal reports have the exact figures.
 
+## Customer reviews (admin → Customer reviews)
+
+A **Trainer Reviews** section sits on the shop page under the product grid. It shows the average
+star rating, the number of reviews, a 5★–1★ breakdown and the approved reviews, plus a
+**Leave a review** form. When there are reviews, a small "★★★★★ 4.6 · 12 reviews" link also appears
+under the intro text at the top and jumps down to the section.
+
+- **On/off switch** (admin → Customer reviews). It is **off by default**. When it's off, the whole
+  section, the form and the top link are hidden, and `POST /api/reviews` refuses new reviews (403).
+  Existing reviews are kept.
+- **Nothing appears without your approval.** New reviews arrive as **Pending**. Use **Show** to
+  publish one, **Hide** to take it down again, **★ Feature** to pin it to the top with a "Featured"
+  badge (featuring also shows it) and **Delete** to remove it for good. The filter buttons switch
+  between Pending, Shown, Hidden, Featured and All.
+- **The form** asks for a name (up to 40 characters), 1–5 stars, a review (10–1000 characters, no
+  web links) and an optional order number. If the order number matches a real (non-demo) order, the
+  review gets a "✔ Verified purchase" badge. Order numbers are only shown to you, never on the shop.
+- **Spam protection:** there's a hidden "website" honeypot box (bots that fill it in get an "ok"
+  reply but nothing is saved). Each visitor can send 3 reviews per 10 minutes, there's a limit of 30
+  reviews per hour for the whole shop, and no new reviews are taken while 200 are waiting for
+  approval. IP addresses are never stored. Only a salted hash is kept in memory for the limits.
+- **Safe text:** reviews are stored as plain text, with control characters removed. Both pages
+  display them as text (`textContent` or escaped HTML), so typed HTML never runs.
+- **Storage:** everything, including the on/off switch, goes in one file, `reviews.json`, in the **private** orders repo
+  (`ORDERS_GITHUB_REPO`, `[skip render]` commits, so no redeploy). It's loaded back when the server
+  starts, so reviews survive Render restarts. Without `ORDERS_GITHUB_REPO`, they are only kept in
+  `data/reviews.json` (or `REVIEWS_FILE`) on the server disk. A failed save is retried by the
+  "Retry saving now" button in the orders storage banner.
+
+API: `GET /api/reviews` returns the summary and approved reviews (`enabled: false` when off).
+`POST /api/reviews` takes `{ name, rating, comment, order? }` and stores it as pending.
+The admin endpoints are `GET /api/admin/reviews`, `PUT /api/admin/reviews/settings { enabled }`,
+`PATCH /api/admin/reviews/:id { status: pending|approved|hidden, featured }` and
+`DELETE /api/admin/reviews/:id`.
+
 ## Portability
 
 Everything that makes up the shop lives in the GitHub repo:
