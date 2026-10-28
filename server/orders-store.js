@@ -148,6 +148,25 @@ function pushFile(file, data, message, pendingKey) {
   return chain;
 }
 
+// Other private files kept next to the orders (e.g. reviews.json): key -> { file, data(), message }.
+// Registered so "Retry saving now" also retries them if a save to the repo failed.
+const EXTRA_FILES = new Map();
+function registerFile(key, file, data, message) { EXTRA_FILES.set(key, { file, data, message }); }
+
+/** Read one JSON file from the private repo. null if not configured or the file doesn't exist yet. */
+async function pullFile(file) {
+  const cfg = ordersConfig();
+  if (!cfg) return null;
+  if (!(await checkRepo())) throw new Error(state.problem);
+  try {
+    const d = await sync.gh(cfg, file, 'GET');
+    return JSON.parse(Buffer.from(d.content, 'base64').toString('utf8'));
+  } catch (err) {
+    if (err.status === 404) return null;
+    throw err;
+  }
+}
+
 function pushOrder(order, message) {
   return pushFile(repoPath(order), order, message, order.id);
 }
@@ -224,6 +243,7 @@ async function retryPending() {
   let ok = 0;
   for (const id of ids) {
     if (id === COSTS_KEY) { if ((await pushFile('costs.json', costs(), 'cost prices (retry)', COSTS_KEY)).github) ok++; continue; }
+    if (EXTRA_FILES.has(id)) { const x = EXTRA_FILES.get(id); if ((await pushFile(x.file, x.data(), `${x.message} (retry)`, id)).github) ok++; continue; }
     const o = find(id);
     if (!o) { state.pending.delete(id); continue; }
     if ((await pushOrder(o, `order ${o.id} (retry)`)).github) ok++;
@@ -275,7 +295,7 @@ function status() {
       warning: 'Orders are not being saved safely — set ORDERS_GITHUB_REPO (a private GitHub repo). Until then orders are only on the server disk, which Render wipes on every restart or deploy.',
     };
   }
-  const problem = state.problem || (state.pending.size ? `${state.pending.size} order/cost update(s) not saved to ${cfg.repo} yet${state.lastError ? ': ' + state.lastError : ''}.` : null);
+  const problem = state.problem || (state.pending.size ? `${state.pending.size} order/cost/review update(s) not saved to ${cfg.repo} yet${state.lastError ? ': ' + state.lastError : ''}.` : null);
   return {
     mode: 'github', repo: cfg.repo, safe: !problem && state.checked && state.private === true,
     checked: state.checked, private: state.private, pending: state.pending.size,
@@ -289,4 +309,4 @@ function reset() {
   state.pending.clear(); state.loadedFromGitHub = false;
 }
 
-module.exports = { all, find, add, update, costs, getCost, setCosts, parseCost, costsPath, retryPending, pullFromGitHub, status, checkRepo, reset, repoPath, monthOf, normalise, isShopRepo, STATUSES, ordersConfig };
+module.exports = { pushFile, pullFile, registerFile, all, find, add, update, costs, getCost, setCosts, parseCost, costsPath, retryPending, pullFromGitHub, status, checkRepo, reset, repoPath, monthOf, normalise, isShopRepo, STATUSES, ordersConfig };

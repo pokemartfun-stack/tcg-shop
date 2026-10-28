@@ -34,6 +34,7 @@ const SESSIONS = new Map(); // token -> { userId, cart, createdAt }
 const productStore = require('./products-store');
 const admin = require('./admin');
 const settingsStore = require('./settings-store');
+const reviews = require('./reviews');
 const PENDING_STRIPE = new Map(); // stripe session id -> { items, email, userId, done }
 
 function stockError(res, problems, products, cart) {
@@ -267,6 +268,9 @@ app.get('/api/config', (req, res) => {
 app.get('/api/settings', (_req, res) => {
   res.json(settingsStore.get());
 });
+
+// Customer reviews: GET summary + approved reviews, POST a new (pending) review. See server/reviews.js.
+app.use('/api/reviews', reviews.publicRouter);
 
 app.get('/api/products', (_req, res) => {
   res.json(loadProducts().map(publicProduct));
@@ -502,6 +506,10 @@ if (require.main === module) {
       .pullFromGitHub()
       .then((ok) => ok && console.log(`Loaded ${ordersStore.all().length} orders from the private orders repo`))
       .catch((err) => console.error('Could not load orders from the orders repo:', err.message)),
+    reviews
+      .pullFromGitHub()
+      .then((ok) => ok && console.log(`Loaded ${reviews.data().reviews.length} reviews from the private orders repo`))
+      .catch((err) => console.error('Could not load reviews from the orders repo:', err.message)),
     settingsStore
       .pullFromGitHub()
       .then((ok) => ok && console.log('Loaded settings.json from GitHub'))

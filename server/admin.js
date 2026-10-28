@@ -62,6 +62,9 @@ router.post('/logout', (req, res) => {
 
 router.use(requireAdmin);
 
+// Customer reviews: list, approve / hide / feature / delete, section on/off (server/reviews.js)
+router.use('/reviews', require('./reviews').adminRouter);
+
 router.get('/status', (_req, res) => {
   const cfg = store.ghConfig();
   res.json({ ok: true, github: cfg ? { repo: cfg.repo, branch: cfg.branch } : null, orders: ordersStore.status() });
