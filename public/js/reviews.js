@@ -1,7 +1,41 @@
-// Customer reviews on the shop page: average stars, approved reviews, "Leave a review" form.
+// Customer reviews on the shop page: average stars, approved reviews shown in a rolling
+// carousel (1 card on phones, up to 3 on desktop, auto-advances every 5 s), "Leave a review" form.
 // Everything shoppers typed is put in the page with textContent (never as HTML).
 (function () {
   'use strict';
+
+  // ---- carousel maths (pure, no DOM; also loaded by test/reviews-carousel.test.js) ----
+  const Carousel = {
+    INTERVAL_MS: 5000,
+    /** Cards visible at once for a carousel this many px wide, never more than there are reviews. */
+    perView(width, count) {
+      const per = width < 640 ? 1 : width < 980 ? 2 : 3;
+      return Math.max(1, Math.min(per, count || 1));
+    },
+    /** Last valid start position (cards i … i+per-1 are on screen). */
+    lastIndex(count, per) { return Math.max(0, count - per); },
+    /** Move one step; past either end it loops round ("wrapped" = jump, not slide). */
+    step(index, dir, count, per) {
+      const last = Carousel.lastIndex(count, per);
+      const next = index + (dir < 0 ? -1 : 1);
+      if (next > last) return { index: 0, wrapped: true };
+      if (next < 0) return { index: last, wrapped: true };
+      return { index: next, wrapped: false };
+    },
+    /** Rotates only when there is something off-screen and nothing asks it to hold still. */
+    shouldRotate({ count, per, reducedMotion, paused, hidden }) {
+      return count > per && !reducedMotion && !paused && !hidden;
+    },
+    /** Featured reviews first, then newest (the server already sends them this way). */
+    order(reviews) {
+      return (reviews || []).map((r, i) => [r, i])
+        .sort((a, b) => (Number(!!b[0].featured) - Number(!!a[0].featured)) || a[1] - b[1])
+        .map((p) => p[0]);
+    },
+  };
+  if (typeof module !== 'undefined' && module.exports) module.exports = Carousel;
+  if (typeof document === 'undefined') return;
+
   const $ = (id) => document.getElementById(id);
   const section = $('reviews');
   if (!section) return;
@@ -49,6 +83,7 @@
       }
     }
     const list = $('review-list');
+    if (carousel) { carousel.destroy(); carousel = null; }
     list.textContent = '';
     if (!has) {
       const empty = el('div', 'review-empty');
@@ -56,19 +91,178 @@
       list.append(empty);
       return;
     }
-    d.reviews.forEach((r) => {
-      const card = el('article', 'review-card' + (r.featured ? ' featured' : ''));
-      const top = el('div', 'review-top');
-      top.append(stars(r.rating));
-      if (r.featured) top.append(el('span', 'review-badge featured', '★ Featured'));
-      if (r.verified) top.append(el('span', 'review-badge verified', '✔ Verified purchase'));
-      const body = el('p', 'review-comment', r.comment);
-      const foot = el('div', 'review-foot');
-      foot.append(el('strong', 'review-name', r.name), el('time', 'hint', ukDate(r.createdAt)));
-      foot.lastChild.dateTime = r.createdAt;
-      card.append(top, body, foot);
-      list.append(card);
+    carousel = buildCarousel(list, Carousel.order(d.reviews).map(reviewCard));
+  }
+
+  function reviewCard(r) {
+    const card = el('article', 'review-card' + (r.featured ? ' featured' : ''));
+    const top = el('div', 'review-top');
+    top.append(stars(r.rating));
+    if (r.featured) top.append(el('span', 'review-badge featured', '★ Featured'));
+    if (r.verified) top.append(el('span', 'review-badge verified', '✔ Verified purchase'));
+    const body = el('p', 'review-comment', r.comment);
+    const foot = el('div', 'review-foot');
+    foot.append(el('strong', 'review-name', r.name), el('time', 'hint', ukDate(r.createdAt)));
+    foot.lastChild.dateTime = r.createdAt;
+    card.append(top, body, foot);
+    return card;
+  }
+
+  // ---- rolling carousel ----
+  let carousel = null;
+  const reducedMotionQuery = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+
+  function buildCarousel(host, cards) {
+    const n = cards.length;
+    const root = el('div', 'review-carousel');
+    root.setAttribute('role', 'region');
+    root.setAttribute('aria-roledescription', 'carousel');
+    root.setAttribute('aria-label', 'Customer reviews');
+    root.tabIndex = -1;
+    const prev = el('button', 'rc-arrow rc-prev', '‹');
+    prev.type = 'button'; prev.setAttribute('aria-label', 'Previous review');
+    const next = el('button', 'rc-arrow rc-next', '›');
+    next.type = 'button'; next.setAttribute('aria-label', 'Next review');
+    const viewport = el('div', 'rc-viewport');
+    const track = el('div', 'rc-track');
+    track.setAttribute('aria-live', 'off');
+    const slides = cards.map((card, i) => {
+      const s = el('div', 'rc-slide');
+      s.setAttribute('role', 'group');
+      s.setAttribute('aria-roledescription', 'slide');
+      s.setAttribute('aria-label', `${i + 1} of ${n}`);
+      s.append(card);
+      track.append(s);
+      return s;
     });
+    viewport.append(track);
+    const dots = el('div', 'rc-dots');
+    dots.setAttribute('role', 'group');
+    dots.setAttribute('aria-label', 'Choose reviews to show');
+    root.append(prev, viewport, next, dots);
+    host.append(root);
+
+    let index = 0;
+    let per = 1;
+    let timer = null;
+    let hover = false;
+    let focus = false;
+    const reduced = () => !!(reducedMotionQuery && reducedMotionQuery.matches);
+
+    function paint(opts = {}) {
+      root.style.setProperty('--per', per);
+      root.style.setProperty('--i', index);
+      root.classList.toggle('single', n === 1);
+      root.classList.toggle('static', n <= per);
+      prev.hidden = next.hidden = dots.hidden = n <= per;
+      if (opts.jump) {
+        track.classList.add('no-anim');
+        void track.offsetWidth; // apply the jump without the slide transition
+        track.classList.remove('no-anim');
+      }
+      slides.forEach((s, i) => {
+        const on = i >= index && i < index + per;
+        const was = s.classList.contains('is-on');
+        s.classList.toggle('is-on', on);
+        s.setAttribute('aria-hidden', String(!on));
+        s.inert = !on;
+        if (on && (!was || opts.jump) && opts.animate && !reduced()) {
+          s.classList.remove('pop'); void s.offsetWidth; s.classList.add('pop');
+        }
+      });
+      const last = Carousel.lastIndex(n, per);
+      if (dots.childElementCount !== last + 1) {
+        dots.textContent = '';
+        for (let i = 0; i <= last; i++) {
+          const b = el('button', 'rc-dot');
+          b.type = 'button';
+          b.setAttribute('aria-label', per === 1 ? `Show review ${i + 1}` : `Show reviews ${i + 1} to ${i + per}`);
+          b.addEventListener('click', () => go(i, true));
+          dots.append(b);
+        }
+      }
+      [...dots.children].forEach((b, i) => b.setAttribute('aria-current', String(i === index)));
+    }
+
+    function go(i, byUser) {
+      const last = Carousel.lastIndex(n, per);
+      const target = Math.max(0, Math.min(last, i));
+      const jump = Math.abs(target - index) > 1 && !byUser;
+      index = target;
+      track.setAttribute('aria-live', byUser ? 'polite' : 'off');
+      paint({ animate: true, jump });
+      schedule();
+    }
+    function move(dir, byUser) {
+      const r = Carousel.step(index, dir, n, per);
+      index = r.index;
+      track.setAttribute('aria-live', byUser ? 'polite' : 'off');
+      paint({ animate: true, jump: r.wrapped });
+      schedule();
+    }
+
+    function schedule() {
+      clearTimeout(timer); timer = null;
+      root.classList.toggle('paused', hover || focus);
+      if (!Carousel.shouldRotate({ count: n, per, reducedMotion: reduced(), paused: hover || focus, hidden: document.hidden })) return;
+      timer = setTimeout(() => move(1, false), Carousel.INTERVAL_MS);
+    }
+
+    function measure() {
+      const p = Carousel.perView(viewport.clientWidth || host.clientWidth || window.innerWidth, n);
+      if (p !== per) { per = p; index = Math.min(index, Carousel.lastIndex(n, per)); paint({ jump: true }); }
+      schedule();
+    }
+
+    prev.addEventListener('click', () => move(-1, true));
+    next.addEventListener('click', () => move(1, true));
+    root.addEventListener('keydown', (e) => {
+      if (n <= per || e.target.closest('input, textarea')) return;
+      if (e.key === 'ArrowLeft') { e.preventDefault(); move(-1, true); }
+      if (e.key === 'ArrowRight') { e.preventDefault(); move(1, true); }
+    });
+    root.addEventListener('mouseenter', () => { hover = true; schedule(); });
+    root.addEventListener('mouseleave', () => { hover = false; schedule(); });
+    root.addEventListener('focusin', () => { focus = true; schedule(); });
+    root.addEventListener('focusout', (e) => { if (!root.contains(e.relatedTarget)) { focus = false; schedule(); } });
+
+    // swipe on phones / tablets
+    let sx = null; let sy = 0;
+    viewport.addEventListener('touchstart', (e) => {
+      if (e.touches.length !== 1) { sx = null; return; }
+      sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+      clearTimeout(timer);
+    }, { passive: true });
+    viewport.addEventListener('touchend', (e) => {
+      if (sx == null) return schedule();
+      const t = e.changedTouches[0];
+      const dx = t.clientX - sx; const dy = t.clientY - sy;
+      sx = null;
+      if (n > per && Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) move(dx < 0 ? 1 : -1, true); else schedule();
+    }, { passive: true });
+    viewport.addEventListener('touchcancel', () => { sx = null; schedule(); }, { passive: true });
+
+    let rz = null;
+    const onResize = () => { clearTimeout(rz); rz = setTimeout(measure, 120); };
+    const onVisibility = () => schedule();
+    const onMotion = () => schedule();
+    window.addEventListener('resize', onResize);
+    document.addEventListener('visibilitychange', onVisibility);
+    if (reducedMotionQuery && reducedMotionQuery.addEventListener) reducedMotionQuery.addEventListener('change', onMotion);
+
+    per = Carousel.perView(viewport.clientWidth || host.clientWidth || window.innerWidth, n);
+    paint({ jump: true });
+    schedule();
+
+    return {
+      destroy() {
+        clearTimeout(timer); clearTimeout(rz);
+        window.removeEventListener('resize', onResize);
+        document.removeEventListener('visibilitychange', onVisibility);
+        if (reducedMotionQuery && reducedMotionQuery.removeEventListener) reducedMotionQuery.removeEventListener('change', onMotion);
+        root.remove();
+      },
+    };
   }
 
   async function load() {
