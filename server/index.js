@@ -35,6 +35,7 @@ const productStore = require('./products-store');
 const admin = require('./admin');
 const settingsStore = require('./settings-store');
 const reviews = require('./reviews');
+const royalmail = require('./royalmail');
 const PENDING_STRIPE = new Map(); // stripe session id -> { items, email, userId, done }
 
 function stockError(res, problems, products, cart) {
@@ -60,7 +61,7 @@ function checkoutDetails(req, user) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: 'Enter your email address so we can send the receipt and tracking number', field: 'email' };
   const a = postage.validateAddress(body.address);
   if (a.error) return a;
-  return { email, address: a.address };
+  return { email, address: a.address, marketing_opt_in: body.marketing_opt_in === true };
 }
 
 function detailsError(res, d) {
@@ -85,6 +86,7 @@ function loadProducts() {
 }
 
 const ordersStore = require('./orders-store');
+const customerOrders = require('./customer-orders');
 
 /**
  * Save an order: copies each item's cost price (admin only, never shown to shoppers) onto the
@@ -93,7 +95,11 @@ const ordersStore = require('./orders-store');
  */
 async function saveOrder(order) {
   const items = (order.items || []).map((l) => ({ ...l, cost_gbp: ordersStore.getCost(l.productId) }));
-  const r = await ordersStore.add({ ...order, items });
+  const history = order.history || [{ at: order.createdAt || new Date().toISOString(), event: 'Paid', note: order.demo ? 'demo order — not sent to Royal Mail' : order.method || undefined }];
+  const r = await ordersStore.add({ ...customerOrders.identity(), ...(ordersStore.find(order.id) || {}), ...order, items, history });
+  // eBay/Vinted-style postage: paid, non-demo orders go to Royal Mail Click & Drop in the background
+  // (never delays or breaks the checkout; failures are retried and shown in admin).
+  royalmail.onOrderPaid(r.order);
   return r.order;
 }
 
@@ -169,6 +175,7 @@ function recordStripeSession(session, source) {
       demo: false,
       stock_conflict: !taken.ok,
       method: 'stripe',
+      marketing_opt_in: data.marketing_opt_in === true || session.metadata?.marketing_opt_in === '1',
       email: data.email || session.customer_email || details.email || null,
       userId: data.userId || null,
       items: data.enriched.items,
@@ -271,6 +278,7 @@ app.get('/api/settings', (_req, res) => {
 
 // Customer reviews: GET summary + approved reviews, POST a new (pending) review. See server/reviews.js.
 app.use('/api/reviews', reviews.publicRouter);
+app.use('/api/customer-orders', customerOrders.router);
 
 app.get('/api/products', (_req, res) => {
   res.json(loadProducts().map(publicProduct));
@@ -358,9 +366,10 @@ app.post('/api/checkout/demo', async (req, res) => {
     userId: user && user.id,
     address: details.address,
   });
-  await saveOrder(order);
+  order.marketing_opt_in = details.marketing_opt_in;
+  const saved = await saveOrder(order);
   req.session.cart = emptyCart();
-  res.json({ order });
+  res.json({ order: { ...order, access_token: saved.access_token, order_number: saved.order_number } });
 });
 
 // Server-calculated totals for the checkout page and the PayPal button (amount never comes from the browser).
@@ -396,15 +405,16 @@ app.post('/api/checkout/stripe', async (req, res) => {
       shipping: enriched.postage, // Royal Mail Tracked 48, calculated on the server
       address: details.address,
       successUrl: `${BASE_URL}/success.html?session_id={CHECKOUT_SESSION_ID}`,
-      cancelUrl: `${BASE_URL}/cart.html`,
+      cancelUrl: `${BASE_URL}/checkout`,
       customerEmail: email,
-      metadata: orderMetadata({ enriched, address: details.address, email, userId: user && user.id }) || undefined,
+      metadata: { ...(orderMetadata({ enriched, address: details.address, email, userId: user && user.id }) || {}), marketing_opt_in: details.marketing_opt_in ? '1' : '0' },
     });
     PENDING_STRIPE.set(session.id, {
       enriched,
       email: email || null,
       address: details.address,
       userId: (user && user.id) || null,
+      marketing_opt_in: details.marketing_opt_in,
       done: false,
     });
     res.json({ url: session.url, id: session.id });
@@ -425,12 +435,15 @@ app.get('/api/checkout/stripe/session/:id', async (req, res) => {
     if (session.payment_status === 'paid') {
       req.session.cart = emptyCart();
       await recordStripeSession(session, 'success page');
+      const saved = ordersStore.find(session.id);
+      if (saved && !saved.access_token) await ordersStore.update(saved.id, customerOrders.identity());
     }
     res.json({
       id: session.id,
       status: session.payment_status,
       amount_total: session.amount_total,
       currency: session.currency,
+      ...(session.payment_status === 'paid' && ordersStore.find(session.id) ? { token: ordersStore.find(session.id).access_token } : {}),
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -474,6 +487,7 @@ app.post('/api/checkout/paypal/record', async (req, res) => {
     stock_conflict: !taken.ok,
     stockProblems: taken.problems,
     method: 'paypal',
+    marketing_opt_in: details.marketing_opt_in === true,
     email: details.email || (req.body && req.body.email) || (user && user.email) || null,
     userId: user && user.id,
     items: enriched.items,
@@ -487,9 +501,9 @@ app.post('/api/checkout/paypal/record', async (req, res) => {
       : 'Demo PayPal — no money taken. Set PAYPAL_CLIENT_ID for live PayPal buttons.',
     createdAt: new Date().toISOString(),
   };
-  await saveOrder(order);
+  const saved = await saveOrder(order);
   req.session.cart = emptyCart();
-  res.json({ order });
+  res.json({ order: { ...order, access_token: saved.access_token, order_number: saved.order_number } });
 });
 
 app.get('/', (_req, res) => {
@@ -525,6 +539,14 @@ if (require.main === module) {
     console.log(process.env.ADMIN_PASSWORD ? 'Admin page: /admin' : 'Admin page disabled (set ADMIN_PASSWORD)');
     const ost = ordersStore.status();
     console.log(ost.mode === 'github' ? `Orders: private repo ${ost.repo}${ost.warning ? ' — WARNING: ' + ost.warning : ''}` : 'WARNING: ' + ost.warning);
+    console.log(royalmail.configured() ? `Royal Mail Click & Drop: connected (service ${royalmail.serviceCode()})` : 'Royal Mail Click & Drop: not connected (set ROYALMAIL_API_KEY)');
+    if (royalmail.configured()) {
+      // orders paid while the server was down / before a failed push: send them now, then fetch tracking
+      royalmail.pushUnsent()
+        .then((r) => r.tried && console.log(`Royal Mail: sent ${r.sent} of ${r.tried} waiting order(s) to Click & Drop`))
+        .then(() => royalmail.syncTracking())
+        .catch((err) => console.error('Royal Mail startup sync failed:', royalmail.scrub(err.message)));
+    }
   }));
 }
 

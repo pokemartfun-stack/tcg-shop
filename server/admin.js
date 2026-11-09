@@ -11,6 +11,8 @@ const importer = require('./importer');
 const photoOrder = require('./photo-order');
 const ordersStore = require('./orders-store');
 const sales = require('./sales');
+const royalmail = require('./royalmail');
+const packingSlip = require('./packing-slip');
 
 const TOKENS = new Map(); // token -> expiry
 const TTL = 12 * 60 * 60 * 1000;
@@ -64,10 +66,12 @@ router.use(requireAdmin);
 
 // Customer reviews: list, approve / hide / feature / delete, section on/off (server/reviews.js)
 router.use('/reviews', require('./reviews').adminRouter);
+// Royal Mail Click & Drop: connection check, push / retry, labels PDF, tracking sync (server/royalmail.js)
+router.use('/royalmail', royalmail.adminRouter);
 
 router.get('/status', (_req, res) => {
   const cfg = store.ghConfig();
-  res.json({ ok: true, github: cfg ? { repo: cfg.repo, branch: cfg.branch } : null, orders: ordersStore.status() });
+  res.json({ ok: true, github: cfg ? { repo: cfg.repo, branch: cfg.branch } : null, orders: ordersStore.status(), royalmail: royalmail.status() });
 });
 
 // admin list includes the private cost prices (kept in the orders store, never in products.json)
@@ -219,13 +223,35 @@ function salesOpts(req, res) {
   return { ...r, includeDemo: req.query.demo === '1' || req.query.demo === 'true', fees: settings.get().fees || sales.DEFAULT_FEES };
 }
 
+// Order tracker. ?all=1 = every order (any date) so nothing waiting to be posted is missed.
 router.get('/orders', (req, res) => {
   const o = salesOpts(req, res);
   if (!o) return;
-  const list = sales.ordersInRange(ordersStore.all(), o.from, o.to)
+  const everything = req.query.all === '1' || req.query.all === 'true';
+  const list = (everything ? ordersStore.all().slice() : sales.ordersInRange(ordersStore.all(), o.from, o.to))
     .filter((x) => o.includeDemo || !x.demo)
-    .map((x) => ({ ...x, figures: sales.orderFigures(x, o.fees), uk: sales.ukParts(x.createdAt) }));
-  res.json({ from: o.from, to: o.to, orders: list, storage: ordersStore.status() });
+    .sort((a, b) => Date.parse(b.createdAt || 0) - Date.parse(a.createdAt || 0))
+    .map((x) => ({ ...x, figures: sales.orderFigures(x, o.fees), uk: sales.ukParts(x.createdAt), ...royalmail.trackerInfo(x) }));
+  res.json({ from: o.from, to: o.to, all: everything, orders: list, storage: ordersStore.status(), royalmail: royalmail.status() });
+});
+
+// Printable packing slip(s): /orders/<id>/packing-slip?size=a4|a6, or /packing-slips?ids=a,b (no ids = all to post)
+function sendSlips(req, res, list) {
+  if (!list.length) return res.status(404).json({ error: 'No orders to print' });
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-store');
+  res.send(packingSlip.render(list, req.query.size === 'a6' ? 'a6' : 'a4', { autoPrint: req.query.print !== '0' }));
+}
+router.get('/orders/:id/packing-slip', (req, res) => {
+  const o = ordersStore.find(req.params.id);
+  if (!o) return res.status(404).json({ error: 'Order not found' });
+  sendSlips(req, res, [o]);
+});
+router.get('/packing-slips', (req, res) => {
+  const ids = String(req.query.ids || '').split(',').map((s) => s.trim()).filter(Boolean);
+  const list = ids.length ? ids.map((id) => ordersStore.find(id)).filter(Boolean)
+    : ordersStore.all().filter((o) => o.status === 'paid' && (req.query.demo === '1' || !o.demo));
+  sendSlips(req, res, list);
 });
 
 router.get('/sales/summary', (req, res) => {
@@ -284,7 +310,18 @@ router.patch('/orders/:id', async (req, res) => {
     }
   }
   if (b.note !== undefined) patch.note = String(b.note).slice(0, 500);
-  const r = await ordersStore.update(cur.id, patch);
+  // typed/overridden by the owner: Royal Mail sync won't replace it
+  if (patch.tracking_number !== undefined && patch.tracking_number !== (cur.tracking_number || '')) patch.tracking_source = patch.tracking_number ? 'manual' : null;
+  const events = [];
+  const STAGE = { paid: 'Back to Paid — to post', posted: 'Shipped', refunded: 'Refunded', cancelled: 'Cancelled' };
+  if (patch.status && patch.status !== cur.status) events.push({ event: STAGE[patch.status], note: patch.status === 'posted' ? (patch.tracking_number !== undefined ? patch.tracking_number : cur.tracking_number) : undefined });
+  if (patch.tracking_number !== undefined && patch.tracking_number !== (cur.tracking_number || '') && !(patch.status === 'posted' && cur.status !== 'posted')) {
+    events.push({ event: patch.tracking_number ? 'Tracking number set' : 'Tracking number removed', note: patch.tracking_number || undefined });
+  }
+  const r = await ordersStore.update(cur.id, (now) => ({
+    ...patch,
+    ...(events.length ? { history: [...(now.history || []), ...events.map((e) => royalmail.historyEntry(e.event, e.note))] } : {}),
+  }));
   if (r.error) return res.status(400).json({ error: r.error });
   res.json({ order: r.order, github: r.github, githubError: r.githubError, storage: ordersStore.status() });
 });

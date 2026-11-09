@@ -13,7 +13,7 @@ let sharp = null;
 try { sharp = require('sharp'); } catch { /* ratio is optional */ }
 
 const PUBLIC = path.join(__dirname, '..', 'public');
-const PAGES = { '/': 'index.html', '/index.html': 'index.html', '/cart.html': 'cart.html', '/checkout.html': 'checkout.html', '/success.html': 'success.html' };
+const PAGES = { '/checkout': 'checkout.html', '/track': 'track.html', '/track.html': 'track.html', '/thank-you': 'success.html', '/': 'index.html', '/index.html': 'index.html', '/cart.html': 'cart.html', '/checkout.html': 'checkout.html', '/success.html': 'success.html' };
 const SAFE_URL = /^(https?:\/\/|\/)[^"'()\s\\<>]*$/i;
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');

@@ -225,12 +225,17 @@ async function add(order) {
   return { order: o, ...r };
 }
 
-/** Update an order (status, tracking …) and save it again. */
+/**
+ * Update an order (status, tracking, Royal Mail details …) and save it again. `patch` can be a
+ * function (current order -> fields), applied synchronously so two updates never lose each other's
+ * changes (e.g. a history entry added while a Royal Mail push finishes).
+ */
 async function update(id, patch) {
   const list = all();
   const i = list.findIndex((x) => x.id === id);
   if (i < 0) return { error: 'Order not found' };
-  const o = { ...list[i], ...patch, id: list[i].id, updatedAt: new Date().toISOString() };
+  const fields = typeof patch === 'function' ? patch(list[i]) : patch;
+  const o = { ...list[i], ...fields, id: list[i].id, updatedAt: new Date().toISOString() };
   list[i] = o;
   writeLocal();
   const r = await pushOrder(o, `order ${o.id}: ${o.status}`);
