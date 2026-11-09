@@ -241,6 +241,7 @@ function wire() {
     try {
       await api('/api/cart/add', { method: 'POST', body: { productId: btn.getAttribute('data-add'), qty: 1 } });
       await window.TCGApp.refreshCartBadge();
+      if (window.CartDrawer) await window.CartDrawer.open(btn);
       btn.textContent = 'Added ✓';
       setTimeout(() => {
         btn.textContent = 'Add to cart';
