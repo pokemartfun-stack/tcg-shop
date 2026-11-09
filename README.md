@@ -258,6 +258,49 @@ the totals (demo can be included with the tick box). "Download CSV" and "Downloa
 plus an Orders sheet with one row per order line, real £ numbers and dd/mm/yyyy dates) follow the chosen
 dates, for your self-assessment records. Fees are estimates — your Stripe/PayPal reports have the exact figures.
 
+## Royal Mail Click & Drop labels + order tracker (admin → Sales → Order tracker)
+
+eBay/Vinted-style postage: when an order is **paid** (Stripe webhook or success page, live PayPal)
+it is sent to your Royal Mail **Click & Drop** account automatically, you print the Tracked 48
+label from admin, and the tracking number comes back onto the order. Demo orders are never sent.
+Without a key everything else works as before and the tracker shows **"not connected"**.
+
+### What you need from Royal Mail
+- A free **Click & Drop** account: https://parcel.royalmail.com/click-and-drop
+- **Printing labels from the shop admin needs an Online Business Account (OBA)** linked to Click & Drop.
+  Royal Mail only gives API labels to OBA accounts (business contract; Royal Mail's 2026 price guide
+  says a business account needs about £5,000 a year spend or 1,000 tracked items a year).
+- On a normal **pay-as-you-go** (OLP) Click & Drop account the shop still sends every paid order to
+  Click & Drop, but you buy and print the label **in Click & Drop** (button "Open in Click & Drop").
+  The tracking number still syncs back here ("Sync tracking"), or you can type it in.
+
+### Connect it (2 minutes)
+1. Log in to Click & Drop → **Settings → Integrations → Click & Drop API**. Pick your trading name,
+   name the integration (e.g. "Po-ke Mart Fun shop") and press **Update**.
+2. Click the new row in the Integrations list to expand it and copy the **auth key**.
+3. On Render → your service → **Environment** → add `ROYALMAIL_API_KEY` = that key → **Save, rebuild and deploy**.
+   Never paste the key into chat, email or GitHub. The shop only sends it to Royal Mail and never shows or logs it.
+4. Optional: `ROYALMAIL_SERVICE_CODE` (default `TPS48` = Tracked 48). In admin press **Check connection**:
+   it lists the Tracked services on your account and tells you if the code is not on it.
+5. Click & Drop shows the integration as "connected" after the first order is sent.
+
+### Using it
+- **Order tracker** tabs: All · To post (paid, not shipped) · Label printed · Shipped · Problems, each with a count.
+  Search by order number, customer name or postcode. Tracking numbers link to Royal Mail tracking.
+- Statuses: **Paid → Sent to Royal Mail → Label printed → Shipped**. Every step is in the order's
+  **Status history** with the date and time (UK).
+- **Print label** (one order) or **Print all labels** (every unshipped order already in Click & Drop) opens one PDF to print.
+- **Packing slip** (A4 with a cut-out address label, or A6 / 4×6" for label printers) works without Royal Mail.
+- Type or override the tracking number and press **Mark as shipped**. A number you type is never replaced by the sync.
+- **Sync tracking** fetches tracking numbers / printed / despatched dates from Click & Drop
+  (also done on startup and after printing labels). An order despatched in Click & Drop becomes Shipped.
+- If sending fails (Royal Mail down, bad address) the order shows a **Problem** with the reason; the shop retries
+  automatically (after 1, 5 and 30 minutes) and on restart, or press **Retry Royal Mail**. A retry first looks the
+  order up by its reference (`PMF-…`), so an order is never created twice in Click & Drop.
+- Parcel weight is estimated (40 g per card / lot, 300 g per sealed or merch item, plus packaging, capped at
+  1 kg Large Letter / 2 kg Small Parcel) unless a product has `weight_g`. Check it in Click & Drop for heavy items.
+- All Royal Mail details and the history are saved with the order in the private orders repo.
+
 ## Customer reviews (admin → Customer reviews)
 
 A **Trainer Reviews** section sits on the shop page under the product grid. It shows the average
@@ -325,3 +368,27 @@ In admin, each thumbnail has ★ (set as cover) and ◀ ▶ (reorder). **Fix pho
 - **Banner:** the banner image is shown as an `<img>` at its own aspect ratio, so the whole picture is visible in full colour with no overlay, tint or filter. **Show shop name over banner** in `/admin → Shop banner` (setting `show_banner_text`, off by default) adds the shop name and tagline in Pokémon-style lettering, with a light gradient behind the text only. When it's off, the name is still the page's `<h1>`, visually hidden.
 - **Shop logo:** `/admin → Shop logo` accepts JPG, PNG, WebP, HEIC or GIF. Images are cropped to a 512 px square PNG at `public/images/logo.png`; GIFs are kept animated as `logo.gif`. Each upload also regenerates the 64 px round `public/favicon.png`. Both files are committed to the repo with `[skip render]`, and the setting is `logo_image`. **Use default logo** switches back to `public/images/logo-default.png`, which uploads never overwrite, and regenerates the favicon from it. `favicon.ico` and `apple-touch-icon.png` are static files made from the default logo.
 
+
+### Customer purchase flow (unreleased local preview)
+
+- Add-to-cart opens a cart drawer; `/checkout` has contact, UK delivery, server-priced Royal
+  Mail shipping and payment, plus a collapsible mobile order summary. Stripe stays hosted.
+- Every saved order gets a random `PMF-…` customer number and 256-bit private access token.
+  `/thank-you?token=…` and the existing Stripe `session_id` success URL show the receipt.
+  Keep these links private: they grant access to that order's contact/address details.
+- `/track` requires the order number and checkout email (case-insensitive). Only allowlisted
+  fields are returned: no street address, phone, email, item costs or internal notes. Both public
+  lookup APIs use `no-store` and a shared in-memory limit of 20 attempts per IP per 15 minutes.
+  Before launch, confirm trusted reverse-proxy configuration: without it users behind Render's
+  proxy may share the same rate-limit bucket. Limits reset at restart and are instance-local.
+- Royal Mail stages reuse the admin tracker. Delivered appears only for an actual delivered
+  date/history event. Current Click & Drop sync records dispatch, not delivery scans; use the
+  Royal Mail link for current delivery scans.
+- Maps use cached postcodes.io lookups (1.8-second timeout) and an attributed OpenStreetMap
+  embed of the approximate postcode area. No paid keys; a plain address-area card is the fallback.
+- Optional news/offer consent is saved with the order. No newsletter or shop confirmation email
+  delivery service is configured, so the page does not promise an unsent email. Enable Stripe
+  receipts separately if required. Existing PayPal capture is preserved only when configured;
+  it still needs server-side verification before relying on it for live fulfilment.
+- Run the test suite in an isolated copy with a catalog fixture: legacy tests write `data/`.
+  Never run those tests against production orders or settings files.
