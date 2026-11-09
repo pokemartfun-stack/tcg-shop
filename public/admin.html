@@ -150,6 +150,32 @@
     .order-detail .lines td { padding: 2px 6px 2px 0; border: 0; font-size: 13px; }
     .fees-box { margin-top: 14px; } .fees-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-top: 8px; }
     .fees-form p { flex-basis: 100%; margin: 0; } .fees-form label { display: flex; flex-direction: column; font-size: 12px; } .fees-form input { width: 80px; }
+    /* ---- Order tracker + Royal Mail ---- */
+    .rm-box { padding: 10px 14px; border-radius: 8px; margin: 6px 0 10px; font-size: 14px; line-height: 1.5; }
+    .rm-box.off { background: #1f2937; border: 1px dashed #9aa3b5; }
+    .rm-box.on { background: #14532d66; border: 1px solid #16a34a; }
+    .rm-box a { color: #FFCB05; } .rm-btns { display: inline-flex; gap: 6px; flex-wrap: wrap; margin-left: 6px; }
+    .tr-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 8px; }
+    .admin .tr-tab { background: #1D2C5E; color: #e5e7eb; border: 1px solid #8886; border-radius: 999px; padding: 5px 12px; font-weight: 700; }
+    .admin .tr-tab.on { background: #FFCB05; color: #111; border-color: #FFCB05; }
+    .tr-tab .n { display: inline-block; min-width: 20px; padding: 0 6px; margin-left: 4px; border-radius: 999px; background: #0006; color: #fff; font-size: 12px; }
+    .tr-tab.on .n { background: #1D2C5E; } .tr-tab.warn:not(.on) .n { background: #dc2626; }
+    .tr-tools { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
+    .tr-tools input[type=search] { flex: 1 1 260px; max-width: 420px; }
+    .tr-print { display: inline-flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-left: auto; }
+    .tr-print [hidden] { display: none; }
+    .acts { display: flex; gap: 4px; flex-wrap: wrap; } .acts button, .acts .btn-link { font-size: 12px; padding: 4px 8px; }
+    .btn-link { display: inline-block; color: #FFCB05; border: 1px solid #FFCB0566; border-radius: 6px; padding: 4px 8px; text-decoration: none; font-size: 12px; }
+    .trk { color: #93c5fd; font-family: ui-monospace, monospace; font-size: 12px; }
+    .badge-s.st-paid { background: #f59e0b33; color: #fbbf24; } .badge-s.st-sent { background: #2563eb44; color: #93c5fd; }
+    .badge-s.st-label_printed { background: #7c3aed44; color: #c4b5fd; } .badge-s.st-shipped { background: #16a34a33; color: #4ade80; }
+    .badge-s.st-refunded, .badge-s.st-cancelled { background: #6b728055; color: #d1d5db; }
+    .badge-s.problem { background: #dc262644; color: #fca5a5; margin-left: 4px; }
+    .admin .orders-table tr.order-row.has-problem td:first-child { box-shadow: inset 3px 0 0 #dc2626; }
+    .hist { margin: 0 0 8px; padding-left: 18px; font-size: 13px; } .hist li { margin: 2px 0; } .hist time { color: #9aa3b5; font-size: 12px; }
+    .probs { margin: 0 0 8px; padding-left: 18px; color: #fca5a5; font-size: 13px; } .rm-line { font-size: 13px; } .err-t { color: #fca5a5; }
+    .admin button.ship { background: #16a34a; }
+    @media (max-width: 700px) { .tr-print { margin-left: 0; } .admin .orders-table tr.order-row td.toggle-cell { grid-column: 1 / -1; } }
     @media (max-width: 700px) {
       .admin .sales-table thead { display: table-header-group; }
       .admin .sales-table tr { display: table-row; }
@@ -184,7 +210,7 @@
 
     <div id="panel" hidden>
       <p><span id="sync"></span> · <a href="/" target="_blank">View shop</a> · <button class="ghost" id="logout">Log out</button></p>
-      <nav class="admin-nav" aria-label="Admin sections"><a href="#sales-section">Sales</a><a href="#reviews-section">Reviews</a><a href="#postage-section">Postage</a><a href="#import-section">Import</a><a href="#add-section">Add product</a><a href="#cards-section">Cards</a><a href="#banner-section">Shop look</a></nav>
+      <nav class="admin-nav" aria-label="Admin sections"><a href="#sales-section">Sales</a><a href="#tracker">Order tracker</a><a href="#reviews-section">Reviews</a><a href="#postage-section">Postage</a><a href="#import-section">Import</a><a href="#add-section">Add product</a><a href="#cards-section">Cards</a><a href="#banner-section">Shop look</a></nav>
       <div class="storage-warn" id="orders-warn" hidden></div>
 
       <section id="sales-section" class="sales">
@@ -204,10 +230,20 @@
         <p class="hint" id="s-notes"></p>
         <details class="sales-months" id="s-months-wrap"><summary>By month</summary><div class="sales-scroll"><table class="sales-table" id="s-months"></table></div></details>
 
-        <h3>Orders <span class="hint" id="s-orders-count"></span></h3>
-        <label class="inline"><input type="checkbox" id="s-only-paid" /> Only orders waiting to be posted</label>
+        <h3 id="tracker">Order tracker <span class="hint" id="s-orders-count"></span></h3>
+        <div class="rm-box off" id="rm-box"></div>
+        <div class="tr-tabs" role="tablist" aria-label="Filter orders" id="tr-tabs"></div>
+        <div class="tr-tools">
+          <input type="search" id="tr-search" placeholder="Search order no., name or postcode" aria-label="Search orders" autocomplete="off" />
+          <label class="inline"><input type="checkbox" id="tr-in-range" /> Only the dates above</label>
+          <span class="tr-print">
+            <button type="button" id="tr-print-all" disabled>🖨 Print all labels</button>
+            <button type="button" class="ghost" id="tr-slips-all">Print all packing slips</button>
+            <label class="inline">Slip size <select id="tr-slip-size"><option value="a4">A4</option><option value="a6">A6 / 4×6" label</option></select></label>
+          </span>
+        </div>
         <div class="sales-scroll"><table class="sales-table orders-table">
-          <thead><tr><th>Date (UK)</th><th>Order</th><th>Customer</th><th>Items</th><th>Subtotal</th><th>Postage</th><th>Total</th><th>Paid by</th><th>Status</th><th></th></tr></thead>
+          <thead><tr><th>Date (UK)</th><th>Order</th><th>Customer</th><th>Items</th><th class="num">Total</th><th>Postage</th><th>Status</th><th>Tracking</th><th>Actions</th></tr></thead>
           <tbody id="s-orders"></tbody>
         </table></div>
 
