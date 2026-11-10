@@ -122,4 +122,10 @@ async function pullFromGitHub() {
   return true;
 }
 
-module.exports = { get, reset, update, validate, pullFromGitHub, DEFAULTS };
+/** Shop settings as shown to shoppers: no estimated payment fees (those are admin-only). */
+function publicSettings() {
+  const { fees, ...pub } = get();
+  return pub;
+}
+
+module.exports = { get, publicSettings, reset, update, validate, pullFromGitHub, DEFAULTS };

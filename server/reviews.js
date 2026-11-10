@@ -137,7 +137,8 @@ let globalHits = [];
 const SALT = crypto.randomBytes(16).toString('hex'); // new each start, so hashes can't be linked to IPs later
 
 function clientKey(req) {
-  const ip = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '';
+  // req.ip follows Express trust proxy (set in index.js); do not read X-Forwarded-For here.
+  const ip = req.ip || (req.socket && req.socket.remoteAddress) || '';
   return crypto.createHash('sha256').update(SALT + ip).digest('hex').slice(0, 24);
 }
 

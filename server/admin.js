@@ -16,6 +16,38 @@ const packingSlip = require('./packing-slip');
 
 const TOKENS = new Map(); // token -> expiry
 const TTL = 12 * 60 * 60 * 1000;
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const LOGIN_MAX_FAILS = 5;
+const loginAttempts = new Map(); // ip -> { fails, until }
+
+function loginKey(req) {
+  return req.ip || (req.socket && req.socket.remoteAddress) || '';
+}
+
+function pruneLoginAttempts(now = Date.now()) {
+  for (const [k, v] of loginAttempts) if (v.until <= now) loginAttempts.delete(k);
+}
+
+function loginLimited(req) {
+  const now = Date.now();
+  pruneLoginAttempts(now);
+  const entry = loginAttempts.get(loginKey(req));
+  if (entry && entry.fails >= LOGIN_MAX_FAILS && entry.until > now) return entry;
+  return null;
+}
+
+function recordLoginFailure(req) {
+  const now = Date.now();
+  pruneLoginAttempts(now);
+  const key = loginKey(req);
+  const entry = loginAttempts.get(key);
+  if (!entry || entry.until <= now) loginAttempts.set(key, { fails: 1, until: now + LOGIN_WINDOW_MS });
+  else entry.fails += 1;
+}
+
+function clearLoginFailures(req) {
+  loginAttempts.delete(loginKey(req));
+}
 
 function safeEqual(a, b) {
   const ha = crypto.createHash('sha256').update(String(a)).digest();
@@ -46,8 +78,18 @@ router.use(express.json({ limit: '5mb' }));
 router.post('/login', (req, res) => {
   const pw = process.env.ADMIN_PASSWORD;
   if (!pw) return res.status(503).json({ error: 'Admin disabled: set ADMIN_PASSWORD' });
+  const limited = loginLimited(req);
+  if (limited) {
+    const secs = Math.max(1, Math.ceil((limited.until - Date.now()) / 1000));
+    res.setHeader('Retry-After', String(secs));
+    return res.status(429).json({ error: 'Too many failed sign-in attempts. Please try again in 15 minutes.' });
+  }
   const given = (req.body && req.body.password) || '';
-  if (!safeEqual(given, pw)) return res.status(401).json({ error: 'Wrong password' });
+  if (!safeEqual(given, pw)) {
+    recordLoginFailure(req);
+    return res.status(401).json({ error: 'Wrong password' });
+  }
+  clearLoginFailures(req);
   const token = crypto.randomBytes(24).toString('hex');
   TOKENS.set(token, Date.now() + TTL);
   const secure = process.env.NODE_ENV === 'production' || (process.env.BASE_URL || '').startsWith('https') ? '; Secure' : '';
@@ -588,4 +630,4 @@ router.post('/photos/fix-order', async (_req, res) => {
   res.json({ ok: true, changed, checked: list.length, noPhotoNames: noNames, unresolved, ...sync });
 });
 
-module.exports = { router, _tokens: TOKENS };
+module.exports = { router, _tokens: TOKENS, _resetLoginAttempts: () => loginAttempts.clear() };

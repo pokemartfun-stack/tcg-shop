@@ -134,9 +134,10 @@ function parseCookies(req, _res, next) {
 }
 
 function setSessionCookie(res, token) {
+  const secure = process.env.NODE_ENV === 'production' || (process.env.BASE_URL || '').startsWith('https') ? '; Secure' : '';
   res.setHeader(
     'Set-Cookie',
-    `session=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000`
+    `session=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000${secure}`
   );
 }
 
@@ -200,6 +201,20 @@ function recordStripeSession(session, source) {
 const STRIPE_WEBHOOK_EVENTS = ['checkout.session.completed', 'checkout.session.async_payment_succeeded'];
 
 const app = express();
+app.set('trust proxy', 1);
+app.disable('x-powered-by');
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  // frame-ancestors only: a fuller CSP would need to allow Stripe, PayPal, Leaflet/OSM,
+  // postcodes.io and the inline scripts/styles already used on these pages.
+  res.setHeader('Content-Security-Policy', "frame-ancestors 'self'");
+  if ((process.env.BASE_URL || BASE_URL).startsWith('https')) {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+  next();
+});
 // Stripe webhook: needs the RAW body for the signature check, so it is registered before express.json.
 app.post('/api/stripe/webhook', express.raw({ type: '*/*', limit: '1mb' }), async (req, res) => {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -273,7 +288,7 @@ app.get('/api/config', (req, res) => {
 });
 
 app.get('/api/settings', (_req, res) => {
-  res.json(settingsStore.get());
+  res.json(settingsStore.publicSettings());
 });
 
 // Customer reviews: GET summary + approved reviews, POST a new (pending) review. See server/reviews.js.
@@ -347,6 +362,9 @@ app.get('/api/auth/me', (req, res) => {
 });
 
 app.post('/api/checkout/demo', async (req, res) => {
+  if (!paymentMode(process.env).demo) {
+    return res.status(403).json({ error: 'Demo checkout is turned off because card or PayPal payments are set up. Please pay in the usual way.' });
+  }
   const products = loadProducts();
   const enriched = enrich(req.session.cart, products);
   if (!enriched.items.length) {
@@ -469,6 +487,9 @@ app.post('/api/checkout/paypal/record', async (req, res) => {
     return res.status(400).json({ error: 'Your cart is empty' });
   }
   const livePaid = Boolean(mode.paypal && req.body && req.body.paypalOrderId);
+  if (!livePaid && !mode.demo) {
+    return res.status(403).json({ error: 'Demo checkout is turned off because card or PayPal payments are set up. Please pay in the usual way.' });
+  }
   if (!livePaid) {
     const problems = productStore.checkStock(cartLines(enriched));
     if (problems.length) return stockError(res, problems, products, req.session.cart);
