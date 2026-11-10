@@ -275,15 +275,28 @@ describe('Push to Click & Drop when an order is paid', () => {
   });
 
   it('demo orders are never pushed, even when connected', async () => {
-    const shopper = await basket([['card', 1]]);
-    const r = await call('POST', '/api/checkout/demo', BUYER, { shopper });
-    assert.equal(r.status, 200);
-    await royalmail.flush();
-    assert.equal(creates().length, 0);
-    const pushed = await royalmail.pushOrder(r.data.order.id);
-    assert.equal(pushed.skipped, 'demo order');
-    const row = (await admin('GET', '/orders?all=1&demo=1')).data.orders.find((x) => x.id === r.data.order.id);
-    assert.equal(row.royalmail.state, 'demo');
+    // Demo checkout is only allowed when no payment keys are set, so drop them for this order only.
+    const stripe = process.env.STRIPE_SECRET_KEY;
+    const pub = process.env.STRIPE_PUBLISHABLE_KEY;
+    const paypal = process.env.PAYPAL_CLIENT_ID;
+    delete process.env.STRIPE_SECRET_KEY;
+    delete process.env.STRIPE_PUBLISHABLE_KEY;
+    delete process.env.PAYPAL_CLIENT_ID;
+    try {
+      const shopper = await basket([['card', 1]]);
+      const r = await call('POST', '/api/checkout/demo', BUYER, { shopper });
+      assert.equal(r.status, 200);
+      await royalmail.flush();
+      assert.equal(creates().length, 0);
+      const pushed = await royalmail.pushOrder(r.data.order.id);
+      assert.equal(pushed.skipped, 'demo order');
+      const row = (await admin('GET', '/orders?all=1&demo=1')).data.orders.find((x) => x.id === r.data.order.id);
+      assert.equal(row.royalmail.state, 'demo');
+    } finally {
+      process.env.STRIPE_SECRET_KEY = stripe;
+      process.env.STRIPE_PUBLISHABLE_KEY = pub;
+      process.env.PAYPAL_CLIENT_ID = paypal;
+    }
   });
 
   it('failure → error state shown in admin (key never in the message), then retry adopts the order already in Click & Drop (no duplicate)', async () => {
