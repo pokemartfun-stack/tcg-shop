@@ -67,5 +67,29 @@
     return (products || []).filter((p) => tabForCategory(p && p.category) === id);
   }
 
-  return { CATEGORIES, TABS, DEFAULT_TAB, normaliseCategory, tabForCategory, parseTab, getTab, productsInTab };
+  /**
+   * Parse a category the admin explicitly chose (add/edit form or JSON import override).
+   * Empty -> { ok: true, category: null } (keep the file's category / default).
+   * A known category, a single-category tab id/label, or a known alias -> { ok: true, category }.
+   * Anything else -> { ok: false, error } (do not silently fall back to Trading cards).
+   */
+  function parseExplicitCategory(v) {
+    const full = String(v == null ? '' : v).trim();
+    if (!full) return { ok: true, category: null };
+    const last = full.split('>').pop().trim();
+    const exact = CATEGORIES.find((c) => c.toLowerCase() === last.toLowerCase());
+    if (exact) return { ok: true, category: exact };
+    const tab = TABS.find((t) => t.id === last.toLowerCase() || t.label.toLowerCase() === last.toLowerCase());
+    if (tab) {
+      // Cards & Lots covers two categories, so the tab name alone is not a valid override
+      if (tab.categories.length === 1) return { ok: true, category: tab.categories[0] };
+      return { ok: false, error: 'Category must be one of: ' + CATEGORIES.join(', ') };
+    }
+    if (ACCESSORY_WORDS.test(last)) return { ok: true, category: ACC };
+    if (SEALED_WORDS.test(last)) return { ok: true, category: 'Sealed products' };
+    if (LOT_WORDS.test(last)) return { ok: true, category: 'Trading card lots' };
+    return { ok: false, error: 'Category must be one of: ' + CATEGORIES.join(', ') };
+  }
+
+  return { CATEGORIES, TABS, DEFAULT_TAB, normaliseCategory, parseExplicitCategory, tabForCategory, parseTab, getTab, productsInTab };
 });

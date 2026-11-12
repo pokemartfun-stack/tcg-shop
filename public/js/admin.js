@@ -650,6 +650,8 @@
       const fd = new FormData();
       fd.append('mode', mode);
       fd.append('photos_follow', m.matchedFiles.length ? '1' : '');
+      const importCat = $('#import-category') && $('#import-category').value;
+      if (importCat) fd.append('category', importCat);
       fd.append('file', f, f.name);
       let d;
       try {
