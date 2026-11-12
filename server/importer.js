@@ -72,12 +72,13 @@ function photoRefs(item) {
 /**
  * @returns {{ items: Array<{index, product, localRefs: string[]}>, errors: Array<{index, title, error}>, format }}
  */
-function importList(list) {
+function importList(list, opts = {}) {
   if (!Array.isArray(list)) {
     if (list && typeof list === 'object' && Array.isArray(list.products)) list = list.products;
     else if (list && typeof list === 'object' && Array.isArray(list.listings)) list = list.listings;
     else return { items: [], errors: [{ index: null, title: '', error: 'The file must contain a list of cards: [ {...}, {...} ]' }], format: null };
   }
+  const categoryOverride = opts.category || null; // already a shop category, or null = use the file
   const items = [];
   const errors = [];
   const usedIds = new Set();
@@ -121,7 +122,7 @@ function importList(list) {
       description: raw.description,
       price_gbp: price,
       condition: raw.condition || raw.quality || 'Near mint',
-      category: mapCategory(raw.category || raw.product_type),
+      category: categoryOverride || mapCategory(raw.category || raw.product_type),
       images: urls,
       stock,
       added_at: parseDate(raw.added_at || raw.date_added) || undefined,

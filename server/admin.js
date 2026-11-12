@@ -13,6 +13,13 @@ const ordersStore = require('./orders-store');
 const sales = require('./sales');
 const royalmail = require('./royalmail');
 const packingSlip = require('./packing-slip');
+const { parseExplicitCategory } = require('../public/js/categories');
+
+/** Validate an explicit category from an admin form. Missing/blank is allowed (caller decides the default). */
+function readCategory(body) {
+  if (!body || body.category == null || String(body.category).trim() === '') return { ok: true, category: undefined };
+  return parseExplicitCategory(body.category);
+}
 
 const TOKENS = new Map(); // token -> expiry
 const TTL = 12 * 60 * 60 * 1000;
@@ -124,6 +131,10 @@ router.post('/products', async (req, res) => {
   const { cost_gbp: costIn, ...body } = req.body || {};
   const cost = ordersStore.parseCost(costIn);
   if (cost.error) return res.status(400).json({ error: cost.error });
+  const cat = readCategory(body);
+  if (!cat.ok) return res.status(400).json({ error: cat.error });
+  if (cat.category) body.category = cat.category;
+  else delete body.category;
   const r = store.normalise(body);
   if (r.error) return res.status(400).json({ error: r.error });
   const list = store.get();
@@ -141,6 +152,10 @@ router.patch('/products/:id', async (req, res) => {
   const { cost_gbp: costIn, ...body } = req.body || {};
   const cost = costIn === undefined ? null : ordersStore.parseCost(costIn);
   if (cost && cost.error) return res.status(400).json({ error: cost.error });
+  const cat = readCategory(body);
+  if (!cat.ok) return res.status(400).json({ error: cat.error });
+  if (cat.category) body.category = cat.category;
+  else delete body.category;
   const merged = { ...list[i], ...body, id: list[i].id };
   const r = store.normalise(merged);
   if (r.error) return res.status(400).json({ error: r.error });
@@ -459,7 +474,9 @@ router.post('/upload', multipart([{ name: 'file', maxCount: 1 }, { name: 'photos
     const parsed = readJsonUpload(req);
     if (parsed.error) return res.status(400).json({ error: parsed.error });
 
-    const imp = importer.importList(parsed.data);
+    const cat = readCategory(req.body);
+    if (!cat.ok) return res.status(400).json({ error: cat.error });
+    const imp = importer.importList(parsed.data, { category: cat.category });
     const errors = imp.errors.map((e) => ({ ...e, item: e.index == null ? null : e.index + 1 }));
     const summary = (list) => list.map((e) => (e.item ? `#${e.item} ${e.title}: ${e.error}` : e.error)).join('\n');
     if (!imp.items.length) {
