@@ -358,6 +358,22 @@
         <h2>Upload JSON file + photos</h2>
         <p>Use the <code>vinted_listings.json</code> from the Vinted Listing Tool, or a shop file (<code>id, title, price_gbp, condition, category, image, stock</code>). Photos are matched to cards by file name.</p>
         <p><label>1. JSON file: <input type="file" id="json-file" accept=".json,application/json" /></label></p>
+        <p><label>Category (shop tab)
+          <select name="category" id="import-category">
+            <option value="">Use category from the file</option>
+            <optgroup label="Cards &amp; Lots tab">
+              <option>Trading cards</option>
+              <option>Trading card lots</option>
+            </optgroup>
+            <optgroup label="Sealed Products tab">
+              <option>Sealed products</option>
+            </optgroup>
+            <optgroup label="Accessories &amp; Merch tab">
+              <option>Accessories &amp; Merch</option>
+            </optgroup>
+          </select>
+        </label></p>
+        <p class="hint">Vinted files usually say Trading cards, which go in the <em>Cards &amp; Lots</em> tab. Pick <em>Sealed products</em> or <em>Accessories &amp; Merch</em> to put this whole upload in that tab instead.</p>
         <div>2. Photos (optional — select your <code>Export\images</code> folder or drop all photos at once):</div>
         <div class="dropzone" id="import-drop">
           <strong>Drag &amp; drop photos or a folder here</strong>
@@ -408,9 +424,18 @@
           <label>Condition
             <select name="condition"><option>Near mint</option><option>Lightly played</option><option>Moderately played</option><option>Heavily played</option><option>Damaged</option><option>New</option><option>New (sealed)</option></select>
           </label>
-          <label>Category
+          <label>Category (shop tab)
             <select name="category" id="add-category">
-              <option>Trading cards</option><option>Trading card lots</option><option>Sealed products</option><option>Accessories &amp; Merch</option>
+              <optgroup label="Cards &amp; Lots tab">
+                <option>Trading cards</option>
+                <option>Trading card lots</option>
+              </optgroup>
+              <optgroup label="Sealed Products tab">
+                <option>Sealed products</option>
+              </optgroup>
+              <optgroup label="Accessories &amp; Merch tab">
+                <option>Accessories &amp; Merch</option>
+              </optgroup>
             </select>
           </label>
           <label>Postage (Royal Mail Tracked 48)
