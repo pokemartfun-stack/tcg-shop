@@ -169,8 +169,9 @@ In `/admin → Upload JSON file + photos`:
 
 1. Choose the `vinted_listings.json` from your Export folder. Shop-format files work too.
 2. Add the photos by dragging the whole `Export\images` folder onto the drop zone, using **Choose whole folder**, or using **Choose photos**. Anything that isn't a JPG/PNG/WebP/HEIC (Thumbs.db, .txt and so on) is ignored.
-3. Before you upload, a preview shows each card with how many of its photos were found, which ones are missing, and any photos no card uses.
-4. Click **Upload**. The cards are created first, then the photos go up in small batches (4 per request) with a progress bar, so 100+ photos never hit size limits.
+3. Pick the **Category (shop tab)** if this upload should go in *Sealed Products* or *Accessories & Merch*. Leave it as "Use category from the file" to keep each item's own category (Vinted trading-card files land in *Cards & Lots*).
+4. Before you upload, a preview shows each card with how many of its photos were found, which ones are missing, and any photos no card uses.
+5. Click **Upload**. The cards are created first, then the photos go up in small batches (4 per request) with a progress bar, so 100+ photos never hit size limits.
 
 How Vinted fields are mapped:
 
