@@ -51,6 +51,14 @@
     sessionStorage.removeItem('adminToken');
     $('#panel').hidden = true;
     $('#login-box').hidden = false;
+    const pwForm = $('#login-form');
+    const otpForm = $('#login-2fa-form');
+    const bakForm = $('#login-backup-form');
+    if (pwForm) pwForm.hidden = false;
+    if (otpForm) otpForm.hidden = true;
+    if (bakForm) bakForm.hidden = true;
+    const pw = $('#pw');
+    if (pw) pw.value = '';
   }
 
   async function showPanel() {
@@ -66,7 +74,12 @@
 
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   // shared with admin-sales.js (Sales section)
-  window.TCGAdmin = { api, msg, syncNote, esc, token: () => token };
+  function setToken(t) {
+    token = t || '';
+    if (token) sessionStorage.setItem('adminToken', token);
+    else sessionStorage.removeItem('adminToken');
+  }
+  window.TCGAdmin = { api, msg, syncNote, esc, token: () => token, setToken, showPanel, showLogin };
 
   let LAST = [];
 
@@ -81,27 +94,35 @@
       .filter((p) => !onlyOos || p.stock < 1);
     $('#rows').innerHTML = rows.map((p) => `
       <tr data-id="${esc(p.id)}" class="${p.stock < 1 ? 'out' : ''}">
-        <td class="rowphotos">
+        <td class="col-check"><input type="checkbox" class="rowcheck" aria-label="Select ${esc(p.title)}" /></td>
+        <td class="rowphotos" data-label="Photos">
           <div class="thumbs">${(() => { const imgs = p.images && p.images.length ? p.images : [p.image]; const n = imgs.length; return imgs.map((u, i) => `
             <span class="t${i === 0 ? ' cover' : ''}"><img src="${esc(u)}" alt="" loading="lazy" title="${i === 0 ? 'Cover photo' : 'Photo ' + (i + 1)}" />${u.startsWith('/images/') && n <= 1 ? '' : `<button type="button" class="rm" data-act="rmimg" data-idx="${i}" title="Remove photo">×</button>`}
               ${n > 1 ? `<span class="ord">${i > 0 ? `<button type="button" data-act="mvimg" data-idx="${i}" data-dir="-1" title="Move left">◀</button>` : ''}${i > 0 ? `<button type="button" data-act="cover" data-idx="${i}" title="Set as cover">★</button>` : '<em>cover</em>'}${i < n - 1 ? `<button type="button" data-act="mvimg" data-idx="${i}" data-dir="1" title="Move right">▶</button>` : ''}</span>` : ''}</span>`).join(''); })()}</div>
           <label class="btnlike" style="font-size:12px;cursor:pointer;color:#60a5fa">Upload photo(s)<input type="file" multiple data-act="addimg" accept="image/jpeg,image/png,image/webp,.heic,.heif,.jpg,.jpeg,.png,.webp" /></label>
         </td>
-        <td>${esc(p.id)}</td>
-        <td>${esc(p.title)} ${p.stock < 1 ? '<span class="oos">OUT OF STOCK</span>' : ''}<br><small>${esc(p.condition)}</small>
-          <br><select class="cat" data-f="category" aria-label="Category (shop tab)" title="Category — decides the shop tab">${catOptions(p.category)}</select>
-          <br><select class="post" data-f="postage_band" aria-label="Postage size" title="Royal Mail Tracked 48 size${p.postage_size ? ' (Vinted size: ' + esc(p.postage_size) + ')' : ''}">${bandOptions(p.postage_band)}</select></td>
-        <td><input class="small" type="number" step="0.01" min="0" data-f="price_gbp" value="${p.price_gbp}" aria-label="Price £" />
+        <td class="col-id" data-label="ID">${esc(p.id)}</td>
+        <td class="col-title" data-label="Title">${esc(p.title)} ${p.stock < 1 ? '<span class="oos">OUT OF STOCK</span>' : ''}<br><small>${esc(p.condition)}</small>
+          <br><label class="postlbl">Postage <select class="post" data-f="postage_band" aria-label="Postage size" title="Royal Mail Tracked 48 size${p.postage_size ? ' (Vinted size: ' + esc(p.postage_size) + ')' : ''}">${bandOptions(p.postage_band)}</select></label></td>
+        <td class="col-cat" data-label="Category (shop tab)">
+          <label>Category (shop tab)
+            <select class="cat" data-f="category" aria-label="Category (shop tab)" title="Category — decides the shop tab">${catOptions(p.category)}</select>
+          </label>
+          <span class="saved-flash" aria-live="polite"></span>
+        </td>
+        <td class="col-price" data-label="Price £ / cost £"><input class="small" type="number" step="0.01" min="0" data-f="price_gbp" value="${p.price_gbp}" aria-label="Price £" />
           <label class="costlbl">Cost £<input class="small" type="number" step="0.01" min="0" data-f="cost_gbp" value="${p.cost_gbp != null ? p.cost_gbp : ''}" placeholder="—" aria-label="Cost price £ (private)" title="What you paid for it — only you see this; used for profit in Sales" /></label></td>
-        <td><input class="small" type="number" step="1" min="0" data-f="stock" value="${p.stock}" /></td>
-        <td class="stockctl">
+        <td class="col-qty" data-label="Quantity"><input class="small" type="number" step="1" min="0" data-f="stock" value="${p.stock}" /></td>
+        <td class="stockctl" data-label="Quick restock">
           <button class="ghost" data-act="delta" data-delta="-1" title="Remove one">−1</button>
           <button class="ghost" data-act="delta" data-delta="1" title="Add one">+1</button>
           <input class="tiny" type="number" min="1" step="1" value="5" data-f="restock" aria-label="Restock amount" />
           <button data-act="restock">Restock +N</button>
         </td>
-        <td><button data-act="save">Save</button> <button class="danger" data-act="del">Remove</button></td>
-      </tr>`).join('') || '<tr><td colspan="7">No cards to show.</td></tr>';
+        <td class="col-actions"><button data-act="save">Save</button> <button class="danger" data-act="del">Remove</button></td>
+      </tr>`).join('') || '<tr><td colspan="9">No cards to show.</td></tr>';
+    const selAll = $('#stock-select-all');
+    if (selAll) selAll.checked = false;
   }
 
   $('#only-oos').addEventListener('change', render);
@@ -188,6 +209,72 @@
       e.preventDefault();
       const tr = e.target.closest('tr');
       tr.querySelector(e.target.dataset.f === 'restock' ? '[data-act=restock]' : '[data-act=save]').click();
+    }
+  });
+
+  function tabLabel(category) {
+    const tab = CAT.getTab(CAT.tabForCategory(category));
+    return (tab && tab.label) || 'Cards & Lots';
+  }
+
+  function flashSaved(tr) {
+    const flash = tr.querySelector('.saved-flash');
+    if (!flash) return;
+    flash.textContent = 'Saved';
+    flash.classList.add('on');
+    clearTimeout(flash._t);
+    flash._t = setTimeout(() => flash.classList.remove('on'), 2500);
+  }
+
+  // Category (shop tab) on a stock row saves as soon as it changes (PATCH /products/:id).
+  async function saveRowCategory(tr, category, { silent } = {}) {
+    const id = tr.dataset.id;
+    const d = await api('PATCH', '/products/' + encodeURIComponent(id), { category });
+    const p = LAST.find((x) => x.id === id);
+    if (p) p.category = d.product.category;
+    flashSaved(tr);
+    if (!silent) {
+      msg('Moved ' + id + ' to ' + d.product.category + ' (' + tabLabel(d.product.category) + ' tab)' + syncNote(d), true);
+    }
+    return d;
+  }
+
+  $('#rows').addEventListener('change', async (e) => {
+    const sel = e.target.closest('select[data-f=category]');
+    if (!sel) return;
+    const tr = sel.closest('tr');
+    sel.disabled = true;
+    try {
+      await saveRowCategory(tr, sel.value);
+    } catch (err) { msg(err.message); }
+    finally { sel.disabled = false; }
+  });
+
+  $('#stock-select-all').addEventListener('change', (e) => {
+    document.querySelectorAll('#rows input.rowcheck').forEach((c) => { c.checked = e.target.checked; });
+  });
+
+  $('#bulk-move').addEventListener('click', async () => {
+    const checked = [...document.querySelectorAll('#rows tr[data-id] input.rowcheck:checked')];
+    const category = $('#bulk-category').value;
+    if (!checked.length) return msg('Tick one or more items first');
+    if (!category) return msg('Pick a category to move them to');
+    const btn = $('#bulk-move');
+    btn.disabled = true;
+    let ok = 0;
+    try {
+      for (const box of checked) {
+        const tr = box.closest('tr');
+        await saveRowCategory(tr, category, { silent: true });
+        ok += 1;
+      }
+      msg('Moved ' + ok + ' item' + (ok === 1 ? '' : 's') + ' to ' + category + ' (' + tabLabel(category) + ' tab)', true);
+      await render();
+    } catch (err) {
+      msg((ok ? ('Moved ' + ok + ', then ') : '') + err.message);
+      await render();
+    } finally {
+      btn.disabled = false;
     }
   });
 
@@ -422,17 +509,82 @@
     } catch (err) { msg(err.message); }
   });
 
+  let pending2fa = '';
+
+  function showPasswordStep() {
+    pending2fa = '';
+    const pwForm = $('#login-form');
+    const otpForm = $('#login-2fa-form');
+    const bakForm = $('#login-backup-form');
+    if (pwForm) pwForm.hidden = false;
+    if (otpForm) otpForm.hidden = true;
+    if (bakForm) bakForm.hidden = true;
+  }
+
+  function showCodeStep() {
+    const pwForm = $('#login-form');
+    const otpForm = $('#login-2fa-form');
+    const bakForm = $('#login-backup-form');
+    if (pwForm) pwForm.hidden = true;
+    if (otpForm) otpForm.hidden = false;
+    if (bakForm) bakForm.hidden = true;
+    const otp = $('#otp');
+    if (otp) { otp.value = ''; otp.focus(); }
+  }
+
+  function showBackupStep() {
+    const otpForm = $('#login-2fa-form');
+    const bakForm = $('#login-backup-form');
+    if (otpForm) otpForm.hidden = true;
+    if (bakForm) bakForm.hidden = false;
+    const bak = $('#backup-code');
+    if (bak) { bak.value = ''; bak.focus(); }
+  }
+
+  window.TCGAdmin.showPasswordStep = showPasswordStep;
+
   $('#login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     try {
       const d = await api('POST', '/login', { password: $('#pw').value });
-      token = d.token;
-      sessionStorage.setItem('adminToken', token);
       $('#pw').value = '';
+      if (d.needs2fa && d.pending) {
+        pending2fa = d.pending;
+        msg('Password accepted. Enter your authenticator code.', true);
+        showCodeStep();
+        return;
+      }
+      setToken(d.token);
       msg('');
       await showPanel();
     } catch (err) { msg(err.message); }
   });
+
+  async function finish2fa(body) {
+    const d = await api('POST', '/login/2fa', { pending: pending2fa, ...body });
+    pending2fa = '';
+    setToken(d.token);
+    showPasswordStep();
+    msg('');
+    await showPanel();
+  }
+
+  const otpForm = $('#login-2fa-form');
+  if (otpForm) otpForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try { await finish2fa({ code: $('#otp').value }); }
+    catch (err) { msg(err.message); }
+  });
+  const bakForm = $('#login-backup-form');
+  if (bakForm) bakForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try { await finish2fa({ backupCode: $('#backup-code').value }); }
+    catch (err) { msg(err.message); }
+  });
+  const useBak = $('#use-backup');
+  if (useBak) useBak.addEventListener('click', () => { msg(''); showBackupStep(); });
+  const useOtp = $('#use-otp');
+  if (useOtp) useOtp.addEventListener('click', () => { msg(''); showCodeStep(); });
 
   $('#logout').addEventListener('click', async () => {
     try { await api('POST', '/logout'); } catch {}
