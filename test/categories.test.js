@@ -280,4 +280,25 @@ describe('admin HTML has category dropdowns for add, edit and import', () => {
     }
     assert.match(adminJs, /fd\.append\('category', importCat\)/);
   });
+
+  it('stock list has a labelled Category (shop tab) column, auto-saves through PATCH, and can bulk-move', () => {
+    assert.match(html, /Cards in stock/);
+    assert.match(html, /<th>Category \(shop tab\)<\/th>/);
+    assert.match(html, /id="bulk-category"/);
+    assert.match(html, /id="bulk-move"/);
+    assert.match(html, /id="stock-select-all"/);
+    const bulk = html.split('id="bulk-category"')[1].split('</select>')[0];
+    for (const c of ['Trading cards', 'Trading card lots', 'Sealed products', 'Accessories &amp; Merch']) {
+      assert.match(bulk, new RegExp(`<option>${c}</option>`));
+    }
+    assert.match(bulk, /Cards &amp; Lots tab/);
+    assert.match(bulk, /Sealed Products tab/);
+    assert.match(adminJs, /class="cat" data-f="category"/);
+    assert.match(adminJs, /saved-flash/);
+    assert.match(adminJs, /flashSaved/);
+    assert.match(adminJs, /saveRowCategory/);
+    assert.match(adminJs, /PATCH', '\/products\/' \+ encodeURIComponent\(id\), \{ category \}/);
+    assert.match(adminJs, /\$\('#bulk-move'\)\.addEventListener\('click'/);
+    assert.match(adminJs, /input\.rowcheck:checked/);
+  });
 });
