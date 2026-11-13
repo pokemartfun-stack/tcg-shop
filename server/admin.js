@@ -14,6 +14,8 @@ const sales = require('./sales');
 const royalmail = require('./royalmail');
 const packingSlip = require('./packing-slip');
 const { parseExplicitCategory } = require('../public/js/categories');
+const security = require('./security-store');
+const admin2fa = require('./admin-2fa');
 
 /** Validate an explicit category from an admin form. Missing/blank is allowed (caller decides the default). */
 function readCategory(body) {
@@ -82,7 +84,17 @@ function requireAdmin(req, res, next) {
 const router = express.Router();
 router.use(express.json({ limit: '5mb' }));
 
-router.post('/login', (req, res) => {
+function issueSession(req, res) {
+  clearLoginFailures(req);
+  const token = crypto.randomBytes(24).toString('hex');
+  TOKENS.set(token, Date.now() + TTL);
+  const secure = process.env.NODE_ENV === 'production' || (process.env.BASE_URL || '').startsWith('https') ? '; Secure' : '';
+  res.setHeader('Set-Cookie', `admin=${token}; Path=/api/admin; HttpOnly; SameSite=Strict; Max-Age=${TTL / 1000}${secure}`);
+  res.json({ ok: true, token });
+}
+
+router.post('/login', async (req, res) => {
+  await security.applyEmergencyReset();
   const pw = process.env.ADMIN_PASSWORD;
   if (!pw) return res.status(503).json({ error: 'Admin disabled: set ADMIN_PASSWORD' });
   const limited = loginLimited(req);
@@ -96,13 +108,11 @@ router.post('/login', (req, res) => {
     recordLoginFailure(req);
     return res.status(401).json({ error: 'Wrong password' });
   }
-  clearLoginFailures(req);
-  const token = crypto.randomBytes(24).toString('hex');
-  TOKENS.set(token, Date.now() + TTL);
-  const secure = process.env.NODE_ENV === 'production' || (process.env.BASE_URL || '').startsWith('https') ? '; Secure' : '';
-  res.setHeader('Set-Cookie', `admin=${token}; Path=/api/admin; HttpOnly; SameSite=Strict; Max-Age=${TTL / 1000}${secure}`);
-  res.json({ ok: true, token });
+  // Failures are cleared only after a complete sign-in (password, and 2FA if it is on).
+  return admin2fa.afterPassword(req, res, issueSession);
 });
+
+admin2fa.mountLogin(router, { issueSession, loginLimited, recordLoginFailure });
 
 router.post('/logout', (req, res) => {
   const t = tokenFrom(req);
@@ -112,6 +122,8 @@ router.post('/logout', (req, res) => {
 });
 
 router.use(requireAdmin);
+admin2fa.mountSecurity(router, { tokenFrom, loginLimited, recordLoginFailure, clearLoginFailures });
+
 
 // Customer reviews: list, approve / hide / feature / delete, section on/off (server/reviews.js)
 router.use('/reviews', require('./reviews').adminRouter);
@@ -647,4 +659,4 @@ router.post('/photos/fix-order', async (_req, res) => {
   res.json({ ok: true, changed, checked: list.length, noPhotoNames: noNames, unresolved, ...sync });
 });
 
-module.exports = { router, _tokens: TOKENS, _resetLoginAttempts: () => loginAttempts.clear() };
+module.exports = { router, _tokens: TOKENS, _resetLoginAttempts: () => loginAttempts.clear(), _resetPendingLogins: () => admin2fa.resetPending() };

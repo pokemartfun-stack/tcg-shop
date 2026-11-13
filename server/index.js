@@ -35,6 +35,7 @@ const productStore = require('./products-store');
 const admin = require('./admin');
 const settingsStore = require('./settings-store');
 const reviews = require('./reviews');
+const securityStore = require('./security-store');
 const royalmail = require('./royalmail');
 const PENDING_STRIPE = new Map(); // stripe session id -> { items, email, userId, done }
 
@@ -549,6 +550,10 @@ if (require.main === module) {
       .pullFromGitHub()
       .then((ok) => ok && console.log('Loaded settings.json from GitHub'))
       .catch((err) => console.error('Could not load settings from GitHub, using local file:', err.message)),
+    securityStore
+      .pullFromGitHub()
+      .then((ok) => ok && console.log('Loaded admin 2FA settings from the private orders repo'))
+      .catch((err) => console.error('Could not load admin 2FA settings from the orders repo:', err.message)),
   ]).finally(() => app.listen(PORT, () => {
     const mode = paymentMode(process.env);
     console.log(`TCG Shop running at ${BASE_URL}`);
