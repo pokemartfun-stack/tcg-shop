@@ -22,6 +22,16 @@
     .admin .small { width: 80px; }
     .admin select.cat { margin-top: 4px; max-width: 220px; }
     .admin select.post { margin-top: 4px; max-width: 220px; }
+    .admin .stock-bulk { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 10px 0 12px; padding: 10px 12px; border: 1px solid #8884; border-radius: 8px; background: #fff1; }
+    .admin .stock-bulk label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; }
+    .admin .stock-bulk select { min-width: 200px; }
+    .admin .col-check { width: 28px; }
+    .admin .col-check input { width: 18px; height: 18px; }
+    .admin .col-cat { min-width: 180px; }
+    .admin .col-cat label, .admin .postlbl { display: flex; flex-direction: column; gap: 4px; font-size: 11px; font-weight: 700; color: #9aa3b5; }
+    .admin .col-cat select.cat { margin-top: 0; width: 100%; max-width: 240px; }
+    .admin .saved-flash { display: none; font-size: 11px; font-weight: 700; color: #4ade80; margin-top: 4px; }
+    .admin .saved-flash.on { display: inline-block; }
     .postage-table { width: auto; margin: 0.5rem 0 1rem; }
     .postage-table td, .postage-table th { padding: 6px 14px 6px 0; text-align: left; }
     .postage-table input { width: 90px; }
@@ -51,7 +61,30 @@
     .admin .logo-nav-demo img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 3px solid #FFCB05; box-shadow: 0 0 0 2px #1D2C5E; background: #e7e2de; }
     .admin .logo-nav-demo span { font-family: 'Luckiest Guy', sans-serif; font-size: 22px; color: #FFCB05; -webkit-text-stroke: 5px #2A75BB; paint-order: stroke fill; text-shadow: 2px 3px 0 #1D2C5E; padding-top: 3px; }
     .admin .filterbar { margin-bottom: 8px; }
-    @media (max-width: 700px) { .admin table thead { display: none; } .admin table tr { display: grid; grid-template-columns: 50px 1fr; gap: 4px; border-bottom: 1px solid #8884; padding: 6px 0; } .admin table td { border: 0; } .admin table td:first-child { grid-row: span 5; } }
+    @media (max-width: 700px) { .admin table:not(.stock-table) thead { display: none; } .admin table:not(.stock-table) tr { display: grid; grid-template-columns: 50px 1fr; gap: 4px; border-bottom: 1px solid #8884; padding: 6px 0; } .admin table:not(.stock-table) td { border: 0; } .admin table:not(.stock-table) td:first-child { grid-row: span 5; } }
+    @media (max-width: 700px) {
+      .admin .stock-bulk { flex-direction: column; align-items: stretch; }
+      .admin .stock-bulk select, .admin .stock-bulk button { width: 100%; min-width: 0; }
+      .admin table.stock-table { display: block; width: 100%; }
+      .admin table.stock-table thead { display: none; }
+      .admin table.stock-table tbody { display: block; }
+      .admin table.stock-table tr { display: grid; grid-template-columns: 28px 70px 1fr; gap: 6px 8px; border-bottom: 1px solid #8884; padding: 12px 0; }
+      .admin table.stock-table td { border: 0; padding: 2px 0; }
+      .admin table.stock-table td.col-check { grid-column: 1; grid-row: 1 / span 2; }
+      .admin table.stock-table td.rowphotos { grid-column: 2; grid-row: 1 / span 2; }
+      .admin table.stock-table td.col-id,
+      .admin table.stock-table td.col-title { grid-column: 3; }
+      .admin table.stock-table td.col-cat,
+      .admin table.stock-table td.col-price,
+      .admin table.stock-table td.col-qty,
+      .admin table.stock-table td.stockctl,
+      .admin table.stock-table td.col-actions { grid-column: 1 / -1; }
+      .admin table.stock-table td[data-label]::before { content: attr(data-label); display: block; font-size: 11px; color: #9aa3b5; font-weight: 700; margin-bottom: 2px; }
+      .admin table.stock-table td.col-cat::before { content: none; }
+      .admin table.stock-table td.col-cat label { color: inherit; font-size: 13px; }
+      .admin table.stock-table select.cat,
+      .admin table.stock-table select.post { max-width: 100%; width: 100%; }
+    }
     /* ---- Customer reviews ---- */
     .rv-toggle-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 8px; }
     .switch { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 700; }
@@ -79,6 +112,22 @@
     .admin button.show { background: #15803d; }
     .admin button.feature { background: #FFCB05; color: #1D2C5E; font-weight: 700; }
     .rv-verified { color: #4ade80; font-size: 11px; display: block; }
+
+    /* ---- Two-factor login ---- */
+    .admin .otp { letter-spacing: 0.35em; font-size: 1.35rem; font-weight: 700; width: 10.5em; text-align: center; }
+    .admin .backup-in { letter-spacing: 0.12em; font-size: 1.1rem; font-weight: 700; width: 12em; text-align: center; font-family: ui-monospace, Menlo, Consolas, monospace; }
+    #login-2fa-form, #login-backup-form { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; max-width: 420px; }
+    #login-2fa-form[hidden], #login-backup-form[hidden] { display: none; }
+    .codes { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin: 10px 0; }
+    .codes code { display: block; padding: 8px 10px; border-radius: 8px; background: #0b0d12; border: 1px solid #8886; font-size: 15px; letter-spacing: 0.06em; text-align: center; }
+    #qr-wrap { display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start; margin: 12px 0; }
+    #qr-wrap img { width: 200px; height: 200px; background: #fff; border-radius: 8px; padding: 8px; }
+    .manual-key { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 15px; letter-spacing: 0.08em; background: #0b0d12; padding: 8px 10px; border-radius: 8px; display: inline-block; word-break: break-all; }
+    #security-section .sec-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    #sec-setup, #sec-codes, #sec-off-form, #sec-regen-form { margin-top: 12px; }
+    #sec-setup[hidden], #sec-codes[hidden], #sec-off-form[hidden], #sec-regen-form[hidden], #sec-reset-banner[hidden],
+    #sec-on-actions[hidden], #sec-off-actions[hidden] { display: none !important; }
+    .sec-actions[hidden] { display: none !important; }
     #msg { position: sticky; top: 0; z-index: 10; min-height: 0; font-weight: 600; white-space: pre-line; margin: 0 0 12px; border-radius: 8px; }
     #msg:empty { display: none; }
     #msg.err { color: #fff; background: #b91c1c; padding: 10px 14px; } #msg.ok { color: #fff; background: #15803d; padding: 10px 14px; }
@@ -206,12 +255,96 @@
         <input type="password" id="pw" placeholder="Admin password" required autocomplete="current-password" />
         <button type="submit">Log in</button>
       </form>
+      <form id="login-2fa-form" hidden>
+        <p>Enter the 6-digit code from your authenticator app (Google Authenticator or Microsoft Authenticator).</p>
+        <input class="otp" type="text" id="otp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" placeholder="123456" required />
+        <button type="submit">Verify</button>
+        <p><button type="button" class="ghost" id="use-backup">Use a backup code instead</button></p>
+      </form>
+      <form id="login-backup-form" hidden>
+        <p>Enter one of your one-time backup codes.</p>
+        <input class="backup-in" type="text" id="backup-code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX" required />
+        <button type="submit">Log in with backup code</button>
+        <p><button type="button" class="ghost" id="use-otp">Use authenticator code instead</button></p>
+      </form>
     </section>
 
     <div id="panel" hidden>
       <p><span id="sync"></span> · <a href="/" target="_blank">View shop</a> · <button class="ghost" id="logout">Log out</button></p>
-      <nav class="admin-nav" aria-label="Admin sections"><a href="#sales-section">Sales</a><a href="#tracker">Order tracker</a><a href="#reviews-section">Reviews</a><a href="#postage-section">Postage</a><a href="#import-section">Import</a><a href="#add-section">Add product</a><a href="#cards-section">Cards</a><a href="#banner-section">Shop look</a></nav>
+      <nav class="admin-nav" aria-label="Admin sections"><a href="#security-section">Security</a><a href="#sales-section">Sales</a><a href="#tracker">Order tracker</a><a href="#reviews-section">Reviews</a><a href="#postage-section">Postage</a><a href="#import-section">Import</a><a href="#add-section">Add product</a><a href="#cards-section">Cards</a><a href="#banner-section">Shop look</a></nav>
       <div class="storage-warn" id="orders-warn" hidden></div>
+      <div class="storage-warn" id="sec-reset-banner" hidden role="status">2FA was reset; remove ADMIN_2FA_RESET from Render and set 2FA up again.</div>
+
+      <section id="security-section">
+        <h2>Security / Two-factor login</h2>
+        <p class="hint">After your password, a 6-digit code from Google Authenticator or Microsoft Authenticator is required to open this admin page. If you lose your phone, use a backup code, or the emergency reset described in <code>ADMIN-2FA.md</code>.</p>
+        <p id="sec-status">Two-factor login is off.</p>
+        <div class="sec-actions" id="sec-on-actions" hidden>
+          <button type="button" id="sec-regen-btn">Regenerate backup codes</button>
+          <button type="button" class="danger" id="sec-off-btn">Turn off 2FA</button>
+        </div>
+        <div class="sec-actions" id="sec-off-actions">
+          <button type="button" id="sec-on-btn">Turn on 2FA</button>
+        </div>
+
+        <div id="sec-setup" hidden>
+          <p>Scan this QR code with your authenticator app, or type the setup key in by hand. Then enter a code from the app to confirm.</p>
+          <div id="qr-wrap">
+            <img id="sec-qr" alt="QR code for authenticator app" width="200" height="200" />
+            <div>
+              <p>Manual setup key</p>
+              <span class="manual-key" id="sec-secret"></span>
+              <form id="sec-confirm-form" style="margin-top:10px">
+                <label>Code from the app<br>
+                  <input class="otp" type="text" id="sec-confirm-code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required />
+                </label>
+                <button type="submit">Confirm and turn on</button>
+                <button type="button" class="ghost" id="sec-setup-cancel">Cancel</button>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <div id="sec-codes" hidden>
+          <p><strong>Save these backup codes now.</strong> Each one works once. They are not shown again. If you lose your phone, one of these will get you back in.</p>
+          <div class="codes" id="sec-code-list"></div>
+          <div class="sec-actions">
+            <button type="button" id="sec-copy-codes">Copy</button>
+            <button type="button" class="ghost" id="sec-download-codes">Download (.txt)</button>
+            <button type="button" id="sec-codes-done">I've saved these codes</button>
+          </div>
+        </div>
+
+        <form id="sec-regen-form" hidden>
+          <p>Enter a current authenticator code to replace your leftover backup codes with a new set of ten. Old unused codes will stop working.</p>
+          <label>Authenticator code
+            <input class="otp" type="text" id="sec-regen-code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required />
+          </label>
+          <div class="sec-actions">
+            <button type="submit">Regenerate backup codes</button>
+            <button type="button" class="ghost" id="sec-regen-cancel">Cancel</button>
+          </div>
+        </form>
+
+        <form id="sec-off-form" hidden>
+          <p>Turning off 2FA means only the admin password will be needed to sign in. Enter your password and a current authenticator code, or a leftover backup code.</p>
+          <label>Admin password
+            <input type="password" id="sec-off-pw" autocomplete="current-password" required />
+          </label>
+          <label>Authenticator code
+            <input class="otp" type="text" id="sec-off-code" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" />
+          </label>
+          <p class="hint">Or use a backup code instead:</p>
+          <label>Backup code
+            <input class="backup-in" type="text" id="sec-off-backup" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX" />
+          </label>
+          <div class="sec-actions">
+            <button type="submit" class="danger">Turn off 2FA</button>
+            <button type="button" class="ghost" id="sec-off-cancel">Cancel</button>
+          </div>
+        </form>
+      </section>
+
 
       <section id="sales-section" class="sales">
         <h2>Sales</h2>
@@ -449,12 +582,32 @@
       </section>
 
       <section id="cards-section">
-        <h2>Cards (<span id="count">0</span>) · <span id="oos-count"></span></h2>
+        <h2>Cards in stock (<span id="count">0</span>) · <span id="oos-count"></span></h2>
         <label class="filterbar"><input type="checkbox" id="only-oos" /> Show out-of-stock only</label>
         <button type="button" id="fix-order" title="Sort every card's photos by the order in your Vinted JSON (photo first)">Fix photo order</button>
         <span class="hint">★ = set as cover, ◀ ▶ = reorder. The cover is the photo shown in the shop.</span>
-        <table>
-          <thead><tr><th>Photos</th><th>ID</th><th>Title / category / postage</th><th>Price £ / cost £</th><th>Quantity</th><th>Quick restock</th><th></th></tr></thead>
+        <div class="stock-bulk" id="stock-bulk">
+          <label class="inline"><input type="checkbox" id="stock-select-all" /> Select all</label>
+          <label>Move selected to
+            <select id="bulk-category" aria-label="Category (shop tab) for selected items">
+              <option value="">Pick a category…</option>
+              <optgroup label="Cards &amp; Lots tab">
+                <option>Trading cards</option>
+                <option>Trading card lots</option>
+              </optgroup>
+              <optgroup label="Sealed Products tab">
+                <option>Sealed products</option>
+              </optgroup>
+              <optgroup label="Accessories &amp; Merch tab">
+                <option>Accessories &amp; Merch</option>
+              </optgroup>
+            </select>
+          </label>
+          <button type="button" id="bulk-move">Move</button>
+          <span class="hint">Tick items and pick a shop tab to move them all at once. Changing one item's Category (shop tab) saves straight away.</span>
+        </div>
+        <table class="stock-table">
+          <thead><tr><th class="col-check"></th><th>Photos</th><th>ID</th><th>Title / postage</th><th>Category (shop tab)</th><th>Price £ / cost £</th><th>Quantity</th><th>Quick restock</th><th></th></tr></thead>
           <tbody id="rows"></tbody>
         </table>
       </section>
@@ -462,6 +615,7 @@
   </main>
   <script src="/js/categories.js"></script>
   <script src="/js/admin.js"></script>
+  <script src="/js/admin-2fa.js"></script>
   <script src="/js/admin-sales.js"></script>
   <script src="/js/admin-reviews.js"></script>
 </body>
