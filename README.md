@@ -132,9 +132,11 @@ Placeholder graphics only. Not affiliated with Nintendo or The Pokémon Company.
 
 Set `ADMIN_PASSWORD` and open `https://your-shop/admin`. If it's not set, the admin page is switched off.
 
+Optional two-factor login (Google or Microsoft Authenticator, plus backup codes and a lost-phone reset) is described in `ADMIN-2FA.md`. Until you turn it on, the admin password alone is enough to sign in.
+
 - **Upload JSON**: a file with a list of cards (see `sample-cards.json`). **Merge** adds new ids, updates matching ids and keeps everything else. **Replace** swaps the whole catalogue for the file.
-- **Add a card** with the form. The image URL is optional.
-- **Edit price/stock** inline and click Save. **Remove** deletes a card.
+- **Add a card** with the form. The image URL is optional. Pick **Category (shop tab)** to choose whether it appears under *Cards & Lots*, *Sealed Products* or *Accessories & Merch*.
+- **Cards in stock**: each row has a labelled **Category (shop tab)** dropdown, grouped by tab. Changing it saves straight away (and shows **Saved**). Tick several rows and use **Move selected to** to move them all at once. Edit price, cost, stock or postage and click **Save**. **Remove** deletes a card.
 
 Each card has these fields: `id` (letters, numbers, `-`, `_`), `title`, `description`, `price_gbp` (≥ 0), `condition`, `category`, `image` (an `https://` URL or a `/images/...` path), `stock` (whole number ≥ 0).
 
