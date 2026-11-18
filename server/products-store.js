@@ -25,6 +25,30 @@ function reset() {
 }
 
 const PLACEHOLDER_IMAGE = '/images/lot-bulk-commons.svg';
+
+/**
+ * Placeholder listings: the demo products that shipped with the shop and still only have the
+ * bundled demo SVG art (public/images/*.svg, labelled PLACEHOLDER). They are hidden from the
+ * public shop (product list, product lookup, add to cart) but stay in products.json and in
+ * the admin, untouched. Only these demo ids are affected, and only while they have no real
+ * photo: upload a photo to one in the admin and it shows again.
+ * To show them all again without a code change, set SHOW_PLACEHOLDER_LISTINGS=yes on Render.
+ */
+const DEMO_PLACEHOLDER_IDS = new Set(['tauros-ar', 'varoom-ar', 'revavroom-sar', 'pikachu-promo', 'charizard-ex', 'lot-bulk-commons']);
+const PLACEHOLDER_ART_RE = /^\/images\/[^/?#]+\.svg(\?.*)?$/i;
+function isPlaceholderListing(p) {
+  if (!p || !DEMO_PLACEHOLDER_IDS.has(p.id)) return false;
+  const imgs = (Array.isArray(p.images) && p.images.length ? p.images : [p.image]).filter(Boolean);
+  return imgs.every((u) => PLACEHOLDER_ART_RE.test(String(u)));
+}
+function hidePlaceholders() {
+  return !/^(1|yes|true|on)$/i.test(String(process.env.SHOW_PLACEHOLDER_LISTINGS || '').trim());
+}
+/** Products shown to shoppers (placeholder-art listings removed unless SHOW_PLACEHOLDER_LISTINGS=yes). */
+function publicList(list) {
+  const all = list || get();
+  return hidePlaceholders() ? all.filter((p) => !isPlaceholderListing(p)) : all;
+}
 const ID_RE = /^[a-z0-9][a-z0-9-_]{0,79}$/i;
 
 function normalise(p, idx = 0) {
@@ -146,5 +170,6 @@ async function decrementStock(items, reason) {
 
 module.exports = {
   get, reset, save, normalise, validateList, pullFromGitHub, checkStock, decrementStock,
+  isPlaceholderListing, publicList,
   ghConfig: sync.ghConfig, PLACEHOLDER_IMAGE, ID_RE,
 };

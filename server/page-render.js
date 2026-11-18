@@ -13,7 +13,19 @@ let sharp = null;
 try { sharp = require('sharp'); } catch { /* ratio is optional */ }
 
 const PUBLIC = path.join(__dirname, '..', 'public');
-const PAGES = { '/checkout': 'checkout.html', '/track': 'track.html', '/track.html': 'track.html', '/thank-you': 'success.html', '/': 'index.html', '/index.html': 'index.html', '/cart.html': 'cart.html', '/checkout.html': 'checkout.html', '/success.html': 'success.html' };
+const PAGES = { '/checkout': 'checkout.html', '/track': 'track.html', '/track.html': 'track.html', '/thank-you': 'success.html', '/': 'index.html', '/index.html': 'index.html', '/cart.html': 'cart.html', '/checkout.html': 'checkout.html', '/success.html': 'success.html', '/success': 'success.html' };
+// Info pages: served with and without .html
+for (const name of ['contact', 'faq', 'privacy', 'terms']) {
+  PAGES['/' + name] = name + '.html';
+  PAGES['/' + name + '.html'] = name + '.html';
+}
+// Customer-service email: set CONTACT_EMAIL on Render to replace the visible
+// "[CONTACT EMAIL — to confirm]" placeholders with a real mailto link.
+const EMAIL_RE = /^[^\s@<>"'()]+@[^\s@<>"'()]+\.[a-z]{2,}$/i;
+function contactEmail() {
+  const e = String(process.env.CONTACT_EMAIL || '').trim();
+  return EMAIL_RE.test(e) ? e : '';
+}
 const SAFE_URL = /^(https?:\/\/|\/)[^"'()\s\\<>]*$/i;
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -78,6 +90,11 @@ function render(html, s, ratio, opts = {}) {
     heroClasses.push('has-image');
     out = out.replace('<img class="hero-img" id="hero-img" alt="" hidden />',
       `<img class="hero-img" id="hero-img" alt="" src="${esc(s.banner_image)}" fetchpriority="high"${ratio ? ` style="aspect-ratio: ${ratio}"` : ''} />`);
+  }
+  const email = opts.contactEmail === undefined ? contactEmail() : opts.contactEmail;
+  if (email) {
+    out = out.replace(/<span class="todo" data-contact-email>[^<]*<\/span>/g,
+      `<a href="mailto:${esc(email)}">${esc(email)}</a>`);
   }
   if (s.show_banner_text) heroClasses.push('show-text');
   out = out.replace('<section class="hero-banner" id="hero-banner"', `<section class="${heroClasses.join(' ')}" id="hero-banner"`);

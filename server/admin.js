@@ -130,6 +130,20 @@ router.use('/reviews', require('./reviews').adminRouter);
 // Royal Mail Click & Drop: connection check, push / retry, labels PDF, tracking sync (server/royalmail.js)
 router.use('/royalmail', royalmail.adminRouter);
 
+// Registered customers: id, name, email, sign-up date and number of orders (matched by email,
+// case-insensitive). Never includes password hashes. Newest first. Read-only for now.
+router.get('/customers', (_req, res) => {
+  const counts = new Map();
+  for (const o of ordersStore.all()) {
+    const e = String((o && o.email) || '').trim().toLowerCase();
+    if (e) counts.set(e, (counts.get(e) || 0) + 1);
+  }
+  const customers = require('./auth').customerList()
+    .map((u) => ({ id: u.id, name: u.name, email: u.email, createdAt: u.createdAt, orderCount: counts.get(String(u.email).toLowerCase()) || 0 }))
+    .sort((a, b) => (Date.parse(b.createdAt || 0) || 0) - (Date.parse(a.createdAt || 0) || 0));
+  res.json({ customers, total: customers.length, storage: ordersStore.status().mode });
+});
+
 router.get('/status', (_req, res) => {
   const cfg = store.ghConfig();
   res.json({ ok: true, github: cfg ? { repo: cfg.repo, branch: cfg.branch } : null, orders: ordersStore.status(), royalmail: royalmail.status() });

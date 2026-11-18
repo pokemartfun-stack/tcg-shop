@@ -296,12 +296,13 @@ app.get('/api/settings', (_req, res) => {
 app.use('/api/reviews', reviews.publicRouter);
 app.use('/api/customer-orders', customerOrders.router);
 
+// Placeholder-art listings are left out of the public shop (see productStore.publicList).
 app.get('/api/products', (_req, res) => {
-  res.json(loadProducts().map(publicProduct));
+  res.json(productStore.publicList(loadProducts()).map(publicProduct));
 });
 
 app.get('/api/products/:id', (req, res) => {
-  const p = loadProducts().find((x) => x.id === req.params.id);
+  const p = productStore.publicList(loadProducts()).find((x) => x.id === req.params.id);
   if (!p) return res.status(404).json({ error: 'Not found' });
   res.json(publicProduct(p));
 });
@@ -316,7 +317,7 @@ app.get('/api/cart', (req, res) => {
 app.post('/api/cart/add', (req, res) => {
   const products = loadProducts();
   const { productId, qty } = req.body || {};
-  const result = addToCart(req.session.cart, products, productId, qty);
+  const result = addToCart(req.session.cart, productStore.publicList(products), productId, qty);
   if (!result.ok) return res.status(400).json({ error: result.error, cart: enrich(req.session.cart, products) });
   res.json(enrich(req.session.cart, products));
 });
@@ -336,11 +337,13 @@ app.post('/api/cart/remove', (req, res) => {
   res.json(enrich(req.session.cart, products));
 });
 
-app.post('/api/auth/register', (req, res) => {
+app.post('/api/auth/register', async (req, res) => {
   const { email, password, name } = req.body || {};
   const result = auth.register(email, password, name);
   if (!result.ok) return res.status(400).json({ error: result.error });
   req.session.userId = result.user.id;
+  // wait for the private-repo save (never fails the sign-up: a failed save is retried from admin)
+  try { await auth.whenSaved(); } catch { /* logged by the orders store */ }
   res.json({ user: result.user });
 });
 
@@ -550,6 +553,10 @@ if (require.main === module) {
       .pullFromGitHub()
       .then((ok) => ok && console.log('Loaded settings.json from GitHub'))
       .catch((err) => console.error('Could not load settings from GitHub, using local file:', err.message)),
+    auth
+      .pullFromGitHub()
+      .then((ok) => ok && console.log(`Loaded ${auth.customerList().length} customer accounts from the private orders repo`))
+      .catch((err) => console.error('Could not load customer accounts from the orders repo:', err.message)),
     securityStore
       .pullFromGitHub()
       .then((ok) => ok && console.log('Loaded admin 2FA settings from the private orders repo'))
