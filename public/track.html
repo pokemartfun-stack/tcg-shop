@@ -1,1 +1,35 @@
-<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>Track your order — Po-ke Mart Fun</title><link rel="icon" href="/favicon.png"><link rel="stylesheet" href="/css/styles.css"><link rel="stylesheet" href="/css/purchase.css"></head><body class="purchase-page"><header class="site-header"><div class="container header-inner"><a class="brand" href="/"><img class="brand-logo" src="/images/logo.png" alt="" width="44" height="44" data-shop-logo><span class="brand-name" data-shop-name>Po-ke Mart Fun</span></a><nav class="nav"><a href="/">Shop</a><a href="/track">Track order</a><a href="/cart.html">Cart <span data-cart-count class="badge" hidden></span></a></nav></div></header><main class="purchase-shell track-shell"><div class="purchase-heading"><p class="eyebrow">From our collection to yours</p><h1>Track your order</h1><p class="hint">Follow your cards, every step of the way.</p></div><form class="track-form" id="track-form"><h2>Find your order</h2><p class="hint">Enter your confirmation number and checkout email.</p><div class="form-row "><label for="order-number">Order number</label><input id="order-number" name="order-number" type="text" autocomplete="" required></div><div class="form-row "><label for="order-email">Email address</label><input id="order-email" name="order-email" type="email" autocomplete="email" required></div><button class="btn block purchase-pay">Track order</button><p class="error" id="track-error" role="alert"></p></form><div id="order-view" aria-live="polite"></div></main><footer class="site-footer"><div class="container"><a href="/">Continue shopping</a> · <a href="/track">Track your order</a><p>Po-ke Mart Fun · UK delivery with Royal Mail</p></div></footer><script src="/js/api.js"></script><script src="/js/app.js"></script><script src="/js/order-pages.js"></script></body></html>
+<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>Track your order — Po-ke Mart Fun</title><link rel="icon" href="/favicon.png"><link rel="stylesheet" href="/css/styles.css"><link rel="stylesheet" href="/css/purchase.css"></head><body class="purchase-page"><header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="/">
+        <img class="brand-logo" src="/images/logo.png" alt="" width="48" height="48" data-shop-logo />
+        <span class="brand-name" data-shop-name>Po-ke Mart Fun</span>
+      </a>
+      <nav class="nav" aria-label="Main">
+        <a href="/">Shop</a>
+        <a href="/track" aria-label="Track order">Track<span class="nav-long">order</span></a>
+        <a href="/cart.html" class="nav-cart">Cart <span class="badge" data-cart-count hidden>0</span></a>
+        <span class="nav-account" data-auth-guest>
+          <button type="button" class="linkish account-btn" data-open-auth="login" aria-label="Account: log in or register" title="Account"><svg class="account-icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="account-label">Account</span></button>
+          <button type="button" class="linkish nav-desktop" data-open-auth="login">Log in</button>
+          <button type="button" class="linkish nav-desktop" data-open-auth="register">Register</button>
+        </span>
+        <span class="nav-account" data-auth-user hidden>
+          <span class="hint nav-greet">Hi, <strong data-user-name></strong></span>
+          <button type="button" class="linkish" data-logout>Log out</button>
+        </span>
+      </nav>
+    </div>
+  </header><main class="purchase-shell track-shell"><div class="purchase-heading"><p class="eyebrow">From our collection to yours</p><h1>Track your order</h1><p class="hint">Follow your cards, every step of the way.</p></div><form class="track-form" id="track-form"><h2>Find your order</h2><p class="hint">Enter your confirmation number and checkout email.</p><div class="form-row "><label for="order-number">Order number</label><input id="order-number" name="order-number" type="text" autocomplete="" required></div><div class="form-row "><label for="order-email">Email address</label><input id="order-email" name="order-email" type="email" autocomplete="email" required></div><button class="btn block purchase-pay">Track order</button><p class="error" id="track-error" role="alert"></p></form><div id="order-view" aria-live="polite"></div></main><footer class="site-footer">
+    <div class="container footer-inner">
+      <nav class="footer-links" aria-label="Footer">
+        <a href="/">Shop</a>
+        <a href="/track">Track order</a>
+        <a href="/contact">Contact us</a>
+        <a href="/faq">FAQ</a>
+        <a href="/privacy">Privacy</a>
+        <a href="/terms">Terms</a>
+      </nav>
+      <p class="footer-legal">&copy; 2026 PO-KE-MART-FUN LIMITED &middot; Secure payments by Stripe &middot; UK delivery with Royal Mail</p>
+      <p class="footer-note">Not affiliated with Nintendo / The Pok&eacute;mon Company.</p>
+    </div>
+  </footer><script src="/js/api.js"></script><script src="/js/app.js"></script><script src="/js/order-pages.js"></script></body></html>

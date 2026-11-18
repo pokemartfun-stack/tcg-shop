@@ -1,0 +1,8 @@
+User-agent: *
+Disallow: /admin
+Disallow: /api/
+Disallow: /checkout
+Disallow: /success
+Disallow: /thank-you
+
+Sitemap: https://tcg-shop-1.onrender.com/sitemap.xml

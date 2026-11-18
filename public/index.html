@@ -16,15 +16,17 @@
         <img class="brand-logo" src="/images/logo.png" alt="" width="48" height="48" data-shop-logo />
         <span class="brand-name" data-shop-name>Po-ke Mart Fun</span>
       </a>
-      <nav class="nav"><a href="/track">Track order</a>
+      <nav class="nav" aria-label="Main">
         <a href="/">Shop</a>
-        <a href="/cart.html">Cart <span class="badge" data-cart-count hidden>0</span></a>
-        <span data-auth-guest>
-          <button type="button" class="linkish" data-open-auth="login">Log in</button>
-          <button type="button" class="linkish" data-open-auth="register">Register</button>
+        <a href="/track" aria-label="Track order">Track<span class="nav-long">order</span></a>
+        <a href="/cart.html" class="nav-cart">Cart <span class="badge" data-cart-count hidden>0</span></a>
+        <span class="nav-account" data-auth-guest>
+          <button type="button" class="linkish account-btn" data-open-auth="login" aria-label="Account: log in or register" title="Account"><svg class="account-icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="account-label">Account</span></button>
+          <button type="button" class="linkish nav-desktop" data-open-auth="login">Log in</button>
+          <button type="button" class="linkish nav-desktop" data-open-auth="register">Register</button>
         </span>
-        <span data-auth-user hidden>
-          <span class="hint">Hi, <strong data-user-name></strong></span>
+        <span class="nav-account" data-auth-user hidden>
+          <span class="hint nav-greet">Hi, <strong data-user-name></strong></span>
           <button type="button" class="linkish" data-logout>Log out</button>
         </span>
       </nav>
@@ -44,7 +46,7 @@
 
   <main class="container">
     <section class="hero">
-      <p>Browse cards, add to cart, and checkout with PayPal, bank card, or Apple Pay. Guest checkout welcome — account optional.</p>
+      <p>Browse cards, add to cart, and check out securely by card, Apple Pay or Google Pay through Stripe. Guest checkout welcome — account optional.</p>
       <a class="rating-pill" id="rating-pill" href="#reviews" hidden><span class="stars" aria-hidden="true" data-stars></span> <strong data-avg></strong> <span data-count></span></a>
       <div id="mode-banner" class="banner" hidden></div>
     </section>
@@ -147,7 +149,18 @@
   </main>
 
   <footer class="site-footer">
-    <div class="container">UK shop demo · Placeholder card art only · Not affiliated with Nintendo / The Pokemon Company</div>
+    <div class="container footer-inner">
+      <nav class="footer-links" aria-label="Footer">
+        <a href="/">Shop</a>
+        <a href="/track">Track order</a>
+        <a href="/contact">Contact us</a>
+        <a href="/faq">FAQ</a>
+        <a href="/privacy">Privacy</a>
+        <a href="/terms">Terms</a>
+      </nav>
+      <p class="footer-legal">&copy; 2026 PO-KE-MART-FUN LIMITED &middot; Secure payments by Stripe &middot; UK delivery with Royal Mail</p>
+      <p class="footer-note">Not affiliated with Nintendo / The Pok&eacute;mon Company.</p>
+    </div>
   </footer>
 
   <script src="/js/categories.js"></script>

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FAQ — Po-ke Mart Fun</title>
+  <meta name="description" content="Postage, tracking, payments, card condition and returns at Po-ke Mart Fun." />
+  <link rel="canonical" href="https://tcg-shop-1.onrender.com/faq" />
+  <link rel="stylesheet" href="/css/styles.css" />
+  <link rel="icon" type="image/png" sizes="64x64" href="/favicon.png" />
+  <link rel="icon" href="/favicon.ico" sizes="any" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="stylesheet" href="/css/purchase.css" />
+</head>
+<body class="info">
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="/">
+        <img class="brand-logo" src="/images/logo.png" alt="" width="48" height="48" data-shop-logo />
+        <span class="brand-name" data-shop-name>Po-ke Mart Fun</span>
+      </a>
+      <nav class="nav" aria-label="Main">
+        <a href="/">Shop</a>
+        <a href="/track" aria-label="Track order">Track<span class="nav-long">order</span></a>
+        <a href="/cart.html" class="nav-cart">Cart <span class="badge" data-cart-count hidden>0</span></a>
+        <span class="nav-account" data-auth-guest>
+          <button type="button" class="linkish account-btn" data-open-auth="login" aria-label="Account: log in or register" title="Account"><svg class="account-icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="account-label">Account</span></button>
+          <button type="button" class="linkish nav-desktop" data-open-auth="login">Log in</button>
+          <button type="button" class="linkish nav-desktop" data-open-auth="register">Register</button>
+        </span>
+        <span class="nav-account" data-auth-user hidden>
+          <span class="hint nav-greet">Hi, <strong data-user-name></strong></span>
+          <button type="button" class="linkish" data-logout>Log out</button>
+        </span>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container info-page">
+    <article class="panel prose" id="faq-page">
+
+      <h1>FAQ</h1>
+      <p class="lead">Quick answers about postage, tracking, payments, card condition and returns.</p>
+
+      <h2>Postage &amp; delivery</h2>
+      <details open>
+        <summary>How do you post orders, and how much does it cost?</summary>
+        <p>Every order is sent with <strong>Royal Mail Tracked 48</strong>. You pay <strong>one postage charge per order</strong>, based on the largest item in your basket:</p>
+        <ul>
+          <li><strong>Large Letter</strong> (single cards and card lots): currently <span data-postage-band="Large Letter">£2.90</span></li>
+          <li><strong>Small Parcel</strong> (sealed products, accessories and merch): currently <span data-postage-band="Small Parcel">£3.75</span></li>
+        </ul>
+        <p>The exact postage is always shown in your basket and at checkout before you pay. If we're running a free-postage offer, you'll see it in your basket too.<span data-free-over hidden></span></p>
+      </details>
+      <details>
+        <summary>How long will delivery take?</summary>
+        <p>Royal Mail Tracked 48 aims to deliver within 2–3 working days after we send your order. We aim to send orders within <span class="todo">[DISPATCH TIME — to confirm, e.g. 1–2 working days]</span>.</p>
+      </details>
+      <details>
+        <summary>Do you post outside the UK?</summary>
+        <p>Not at the moment. We only deliver to addresses in the United Kingdom.</p>
+      </details>
+
+      <h2>Tracking your order</h2>
+      <details>
+        <summary>How do I track my order?</summary>
+        <p>Go to <a href="/track">Track order</a> and enter your order number and the email you used at checkout. You'll see your order's progress, and your Royal Mail tracking number once your parcel has been sent.</p>
+      </details>
+
+      <h2>Payments</h2>
+      <details>
+        <summary>How can I pay?</summary>
+        <p>Checkout is handled securely by <strong>Stripe</strong>. You can pay by debit or credit card, and with Apple Pay or Google Pay on supported devices. Prices are in pounds sterling (GBP).</p>
+      </details>
+      <details>
+        <summary>Do you see or store my card details?</summary>
+        <p>No. You enter your payment details on Stripe's secure page, and we never see or store your full card number.</p>
+      </details>
+      <details>
+        <summary>Do I need an account?</summary>
+        <p>No. Guest checkout is welcome. An account is optional.</p>
+      </details>
+
+      <h2>Card condition</h2>
+      <details>
+        <summary>What do your condition descriptions mean?</summary>
+        <p>Each listing states the card's condition, such as Near Mint. Cards are ungraded unless the listing says otherwise. Condition is our honest assessment, and collectors can judge condition a little differently, so please look at the photos and description, and ask us before you buy if you'd like more detail.</p>
+      </details>
+      <details>
+        <summary>Are the photos of the actual item?</summary>
+        <p>Where a listing has its own photos, they show the actual card or lot you'll receive. Lots and bundles contain the cards described in the listing.</p>
+      </details>
+
+      <h2>Returns</h2>
+      <details>
+        <summary>Can I return something?</summary>
+        <p>Yes. You can cancel your order within 14 days of delivery and return the items for a refund. If something arrives damaged, faulty or not as described, contact us and we'll put it right. Full details are in our <a href="/terms#cancellation">Terms of Sale</a>.</p>
+      </details>
+
+      <h2>Still need help?</h2>
+      <p>Email us at <span class="todo" data-contact-email>[CONTACT EMAIL — to confirm]</span> or visit our <a href="/contact">Contact us</a> page. We aim to reply within 1–2 working days.</p>
+
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <nav class="footer-links" aria-label="Footer">
+        <a href="/">Shop</a>
+        <a href="/track">Track order</a>
+        <a href="/contact">Contact us</a>
+        <a href="/faq">FAQ</a>
+        <a href="/privacy">Privacy</a>
+        <a href="/terms">Terms</a>
+      </nav>
+      <p class="footer-legal">&copy; 2026 PO-KE-MART-FUN LIMITED &middot; Secure payments by Stripe &middot; UK delivery with Royal Mail</p>
+      <p class="footer-note">Not affiliated with Nintendo / The Pok&eacute;mon Company.</p>
+    </div>
+  </footer>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/app.js"></script>
+  <script src="/js/cart-drawer.js"></script>
+  <script>
+  // Postage prices come from the shop settings (admin), so this page never goes out of date.
+  (function () {
+    fetch('/api/settings').then(function (r) { return r.json(); }).then(function (s) {
+      var p = s && s.postage; if (!p || !p.bands) return;
+      var gbp = function (n) { return '£' + Number(n).toFixed(2); };
+      document.querySelectorAll('[data-postage-band]').forEach(function (el) {
+        var b = p.bands[el.getAttribute('data-postage-band')];
+        if (b && Number.isFinite(Number(b.price))) el.textContent = gbp(b.price);
+      });
+      var f = document.querySelector('[data-free-over]');
+      if (f && p.free_over_enabled && Number(p.free_over) > 0) { f.textContent = ' Right now, postage is free on orders over ' + gbp(p.free_over) + '.'; f.hidden = false; }
+    }).catch(function () {});
+  })();
+  </script>
+</body>
+</html>
