@@ -4,8 +4,9 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-// Isolate users file by pointing auth at a temp copy via monkeypatch is heavy;
-// instead test hash helpers and register against data/users.json carefully.
+// Users go to a temp file (USERS_FILE), never data/users.json; no private repo in this test.
+process.env.USERS_FILE = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'tcg-auth-')), 'users.json');
+delete process.env.ORDERS_GITHUB_REPO;
 
 const auth = require('../server/auth');
 

@@ -78,7 +78,8 @@ describe('admin product management', () => {
   });
 
   it('uploads JSON with merge and replace', async () => {
-    const before = (await call('GET', '/api/products')).data.length;
+    // count every product (the public list leaves out the demo placeholder-art listings)
+    const before = (await call('GET', '/api/admin/products', null, token)).data.length;
     const merge = await call('POST', '/api/admin/upload', {
       mode: 'merge',
       products: [
