@@ -25,7 +25,27 @@ Without Stripe/PayPal keys the shop runs in **demo mode**: browse, cart, registe
 ## Optional account + guest checkout
 
 - **Guest**: add to cart → checkout with email → pay (or demo). No account needed.
-- **Register / log in**: header buttons. Accounts are stored locally in `data/users.json` with hashed passwords. Cart is session-based (cookie) and works the same for guests and signed-in users.
+- **Register / log in**: the header Log in / Register buttons (one Account button on phones). Accounts are stored with hashed passwords in the private orders repo (see below), with `data/users.json` as the local cache. Cart is session-based (cookie) and works the same for guests and signed-in users.
+
+### Where customer accounts are saved (admin → Customers)
+
+Accounts are saved as `users.json` in the **private** orders repo (`ORDERS_GITHUB_REPO`, the same
+place as orders, reviews and the 2FA settings), so they survive Render restarts and deploys. Passwords
+are stored only as scrypt hashes and are never sent to the browser or shown in the admin. Without
+`ORDERS_GITHUB_REPO` (demo mode, tests) accounts stay in the local, git-ignored `data/users.json`
+(or `USERS_FILE`). The admin **Customers** section lists name, email, sign-up date and number of
+orders (matched by email), newest first, with a search box. It is read-only.
+
+## Info pages, footer and placeholders
+
+- `/contact`, `/faq`, `/privacy`, `/terms` (also with `.html`), `/robots.txt` and `/sitemap.xml`.
+  Details still to confirm are shown as yellow `[… — to confirm]` placeholders in the HTML.
+- `CONTACT_EMAIL` (optional, on Render): replaces every `[CONTACT EMAIL — to confirm]` with a
+  mailto link.
+- The six demo products that still only have the bundled placeholder SVG art (`tauros-ar`,
+  `varoom-ar`, `revavroom-sar`, `pikachu-promo`, `charizard-ex`, `lot-bulk-commons`) are hidden
+  from the shop but kept in `products.json` and the admin. Upload a real photo to one and it shows
+  again. Set `SHOW_PLACEHOLDER_LISTINGS=yes` to show them all again.
 
 ## Live payments
 
