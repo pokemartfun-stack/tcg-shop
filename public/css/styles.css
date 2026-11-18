@@ -538,16 +538,7 @@ html.has-page-bg .site-footer { border-top-color: rgba(255, 255, 255, 0.12); }
 @media (max-width: 400px) {
   .brand-name { font-size: 1rem; }
 }
-/* Phones: the round logo already reads "Poke Mart", so the text name is hidden (kept for screen readers)
-   and the nav fits on one line. */
-@media (max-width: 480px) {
-  .brand-name {
-    position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden;
-    clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
-  }
-  .nav { gap: 0.15rem; flex-wrap: nowrap; }
-  .nav a, .nav button.linkish { padding: 0.35rem 0.4rem; font-size: 0.9rem; }
-}
+/* Phones: see "Header + footer (round 5)" at the end of this file. */
 
 /* ======================================================================
    Shop sections: Cards & Lots / Sealed Products / Accessories & Merch.
@@ -796,3 +787,98 @@ html.has-page-bg .site-footer { border-top-color: rgba(255, 255, 255, 0.12); }
   .rc-arrow { width: 2.1rem; height: 2.1rem; font-size: 1.5rem; border-width: 2px; }
   .review-carousel { gap: 0.5rem 0.35rem; }
 }
+
+/* ======================================================================
+   Header + footer (round 5, 16 Nov 2026). One header on every public page
+   (shop, cart, checkout, track, thank-you, info pages):
+   - desktop: logo + wordmark, Shop / Track order / Cart / Log in / Register
+   - phones (<=480px): compact wordmark beside the logo, and Shop / Track /
+     Cart / Account on ONE row, every tap target at least 44x44px.
+   Log in + Register merge into one Account button (opens the same modal,
+   which has Log in and Register tabs). Logged in: "Hi, name" + Log out.
+   ====================================================================== */
+.header-inner { flex-wrap: nowrap; }
+.brand { min-width: 0; flex: 0 1 auto; }
+.brand-name { white-space: nowrap; }
+.nav { flex-wrap: nowrap; gap: 0.25rem; }
+.nav a, .nav button.linkish {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 44px; min-width: 44px; padding: 0.35rem 0.6rem; border-radius: 8px;
+  font-size: 0.95rem; line-height: 1.2; white-space: nowrap;
+}
+.nav a:focus-visible, .nav button.linkish:focus-visible { outline: 2px solid var(--poke-yellow); outline-offset: 1px; }
+.nav-long { margin-left: 0.28em; }
+.site-header .nav a:not(.btn), .site-header .nav button.linkish { color: #d5dcef; }
+.site-header .nav a:not(.btn):hover, .site-header .nav button.linkish:hover { color: var(--poke-yellow); }
+.nav-account { display: inline-flex; align-items: center; gap: 0.25rem; }
+.nav-account[hidden], .badge[hidden] { display: none; }
+.nav-greet { white-space: nowrap; font-size: 0.9rem; }
+.account-btn { display: none !important; }
+.account-icon { display: block; }
+.account-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+
+@media (max-width: 480px) {
+  .header-inner { gap: 0.4rem; padding: 0.45rem 0; }
+  .brand { gap: 0.4rem; }
+  .brand-logo { width: 36px; height: 36px; border-width: 2px; }
+  .brand-name { font-size: 0.95rem; -webkit-text-stroke-width: 3px; text-shadow: 1px 1px 0 var(--poke-navy); letter-spacing: 0.02em; }
+  .nav { gap: 0; margin-left: auto; }
+  .nav a, .nav button.linkish { padding: 0.3rem 0.35rem; font-size: 0.9rem; }
+  .nav-long, .nav-desktop, .nav-greet { display: none !important; }
+  .account-btn { display: inline-flex !important; }
+  .nav .badge { margin-left: 0.15rem; min-width: 1.2rem; height: 1.2rem; font-size: 0.7rem; }
+}
+@media (max-width: 370px) {
+  .brand-logo { width: 32px; height: 32px; }
+  .brand-name { font-size: 0.82rem; -webkit-text-stroke-width: 2.5px; }
+  .nav a, .nav button.linkish { padding: 0.3rem 0.2rem; font-size: 0.85rem; }
+}
+
+/* ---------- Footer ---------- */
+.site-footer { text-align: center; position: relative; z-index: 1; }
+html.has-page-bg .site-footer { background: rgba(12, 15, 26, 0.86); backdrop-filter: blur(6px); }
+.site-footer .footer-links a:not(.btn) { color: #d5dcef; }
+.site-footer .footer-links a:not(.btn):hover { color: var(--poke-yellow); }
+.footer-inner { display: grid; gap: 0.35rem; justify-items: center; }
+.footer-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.15rem 0.35rem; }
+.footer-links a {
+  display: inline-flex; align-items: center; min-height: 44px; padding: 0 0.6rem;
+  color: #d5dcef; font-weight: 600; border-radius: 8px;
+}
+.footer-links a:hover { color: var(--poke-yellow); }
+.footer-links a:focus-visible { outline: 2px solid var(--poke-yellow); outline-offset: 1px; }
+.site-footer p { margin: 0; }
+.footer-legal { color: #c3cad8; }
+.footer-note { font-size: 0.8rem; }
+@media (max-width: 480px) {
+  .footer-links { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
+  .footer-links a { justify-content: center; padding: 0 0.25rem; }
+}
+
+/* ---------- Info pages: Contact us, FAQ, Privacy, Terms ---------- */
+.info-page { padding: 1.6rem 0 1rem; }
+.info-page .prose { max-width: 50rem; margin: 0 auto; padding: 1.6rem clamp(1rem, 4vw, 2.2rem); line-height: 1.65; }
+.prose h1 {
+  font-family: var(--font-display); font-weight: 400; letter-spacing: 0.03em; line-height: 1.1;
+  font-size: clamp(1.7rem, 4vw, 2.3rem); margin: 0 0 0.4rem;
+  color: var(--poke-yellow); -webkit-text-stroke: 4px var(--poke-blue); paint-order: stroke fill;
+  text-shadow: 2px 3px 0 var(--poke-navy);
+}
+.prose h2 { font-size: 1.2rem; margin: 1.7rem 0 0.5rem; color: #fff; border-bottom: 2px solid var(--poke-red); padding-bottom: 0.25rem; }
+.prose h3 { font-size: 1.02rem; margin: 1.2rem 0 0.35rem; color: var(--poke-yellow); }
+.prose p, .prose li { color: #dfe4ee; }
+.prose ul, .prose ol { padding-left: 1.3rem; }
+.prose li { margin: 0.25rem 0; }
+.prose .lead { font-size: 1.05rem; color: #e8ecf5; }
+.prose .updated { color: var(--muted); font-size: 0.9rem; margin-top: 0; }
+.prose a { color: #8cc2ff; text-decoration: underline; text-underline-offset: 2px; }
+.prose a:hover { color: var(--poke-yellow); }
+.prose details { border: 1px solid var(--border); border-radius: 10px; background: rgba(15, 17, 23, 0.55); margin: 0.6rem 0; }
+.prose summary { cursor: pointer; font-weight: 700; padding: 0.8rem 1rem; min-height: 44px; list-style-position: inside; }
+.prose summary:focus-visible { outline: 2px solid var(--poke-yellow); outline-offset: 2px; border-radius: 10px; }
+.prose details > :not(summary) { margin-left: 1rem; margin-right: 1rem; }
+.prose details > :last-child { margin-bottom: 0.9rem; }
+.contact-card { display: grid; gap: 0.6rem; background: rgba(15, 17, 23, 0.55); border: 1px solid var(--border); border-left: 4px solid var(--poke-red); border-radius: 10px; padding: 1rem 1.2rem; margin: 1rem 0; }
+.contact-card p { margin: 0; }
+/* Details the owner still has to confirm: deliberately easy to spot */
+.todo { background: rgba(255, 203, 5, 0.14); color: #ffe27a; border: 1px dashed rgba(255, 203, 5, 0.7); border-radius: 4px; padding: 0 0.3em; font-weight: 600; white-space: normal; }
