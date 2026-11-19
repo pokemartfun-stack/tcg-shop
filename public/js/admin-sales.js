@@ -90,6 +90,7 @@
   ];
   let tab = 'to_post';
   let rm = { connected: false };
+  let mail = { enabled: false };
   const trackUrl = (n) => 'https://www.royalmail.com/track-your-item#/tracking-results/' + encodeURIComponent(n);
   const when = (iso) => { try { return new Date(iso).toLocaleString('en-GB', { timeZone: 'Europe/London', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch { return iso; } };
 
@@ -135,6 +136,24 @@
     return `<div class="acts">${b.join('')}</div>`;
   }
 
+  // Customer emails (confirmation / shipped): when each was sent + resend buttons
+  function emailLine(o, field, errField, label, wanted) {
+    const esc = A().esc;
+    if (o[field]) return `<li>✅ ${label}: sent ${esc(when(o[field]))}</li>`;
+    if (o[errField]) return `<li>⚠️ ${label}: failed — <span class="hint">${esc(o[errField])}</span></li>`;
+    return `<li class="hint">${label}: ${wanted ? 'not sent' : 'not sent yet'}</li>`;
+  }
+  function emailsHtml(o) {
+    const id = A().esc(o.id);
+    if (o.demo) return '<h4>Customer emails</h4><p class="hint">Demo order — no emails are sent.</p>';
+    if (!mail.enabled) return '<h4>Customer emails</h4><p class="hint">Off — set GMAIL_USER and GMAIL_APP_PASSWORD on Render to email buyers (see README).</p>';
+    const canSend = Boolean(o.email);
+    const btn = (kind, text) => `<button type="button" class="ghost" data-act="resend-email" data-kind="${kind}" data-id="${id}" ${canSend ? '' : 'disabled'}>${text}</button>`;
+    return `<h4>Customer emails</h4><ul class="mail-status">${emailLine(o, 'confirmation_emailed_at', 'confirmation_email_error', 'Confirmation', false)}${emailLine(o, 'shipped_emailed_at', 'shipped_email_error', 'Shipped', o.status !== 'posted')}</ul>
+      <div class="acts">${btn('confirmation', o.confirmation_emailed_at ? 'Resend confirmation email' : 'Send confirmation email')}${o.status === 'posted' && o.tracking_number ? btn('shipped', o.shipped_emailed_at ? 'Resend shipped email' : 'Send shipped email') : ''}</div>
+      <p class="hint">From ${A().esc(mail.from || '')} to ${A().esc(o.email || 'no email on order')}</p>`;
+  }
+
   function detailHtml(o) {
     const esc = A().esc;
     const f = o.figures;
@@ -151,6 +170,7 @@
         ${o.payment_ref ? '<br>Payment ref: ' + esc(o.payment_ref) : ''}</p></div>
       <div><h4>Status history</h4><ol class="hist">${hist || '<li class="hint">No history</li>'}</ol>
         <h4>Royal Mail</h4><p class="rm-line">${rmStateHtml(o)}</p>
+        ${emailsHtml(o)}
         ${probs ? '<h4>Problems</h4><ul class="probs">' + probs + '</ul>' : ''}
         ${actionsHtml(o, false)}</div>
       <form class="od-form" data-id="${esc(o.id)}"><h4>Update</h4>
@@ -277,6 +297,7 @@
       renderSummary(s);
       orders = o.orders;
       rm = o.royalmail || rm;
+      mail = o.emails || mail;
       renderOrders();
     } catch (err) { A().msg(err.message); }
   }
@@ -366,6 +387,14 @@
       if (b.dataset.act === 'posted') saveOrder(b.closest('form'), 'posted');
       else if (b.dataset.act === 'slip') printSlips([id]);
       else if (b.dataset.act === 'label') printLabels([id]);
+      else if (b.dataset.act === 'resend-email') {
+        const kind = b.dataset.kind || 'confirmation';
+        if (!confirm(`Email the ${kind === 'shipped' ? 'shipped' : 'order confirmation'} message to this customer now?`)) return;
+        b.disabled = true;
+        A().api('POST', '/orders/' + encodeURIComponent(id) + '/resend-email', { kind })
+          .then(() => { A().msg(`${kind === 'shipped' ? 'Shipped' : 'Confirmation'} email sent for order ${id}`, true); return load(); })
+          .catch((err) => { A().msg(err.message); load(); });
+      }
       else if (b.dataset.act === 'push') {
         b.disabled = true;
         A().api('POST', '/royalmail/orders/' + encodeURIComponent(id) + '/push')
