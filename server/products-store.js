@@ -168,8 +168,20 @@ async function decrementStock(items, reason) {
   return { ok: true, problems: [], sync: syncResult };
 }
 
+/** Put items back on the shelf (refund with "put back in stock"). items = [{ productId, qty }]. Unknown products are skipped. */
+async function incrementStock(items, reason) {
+  const add = new Map();
+  for (const l of items || []) add.set(l.productId, (add.get(l.productId) || 0) + (Number(l.qty) || 0));
+  const current = get();
+  const known = current.filter((p) => add.has(p.id));
+  if (!known.length) return { ok: true, restocked: [], skipped: [...add.keys()] };
+  const next = current.map((p) => (add.has(p.id) ? { ...p, stock: p.stock + add.get(p.id) } : p));
+  const syncResult = await save(next, `stock: ${reason}`);
+  return { ok: true, restocked: known.map((p) => ({ productId: p.id, qty: add.get(p.id) })), skipped: [...add.keys()].filter((id) => !known.some((p) => p.id === id)), sync: syncResult };
+}
+
 module.exports = {
-  get, reset, save, normalise, validateList, pullFromGitHub, checkStock, decrementStock,
+  incrementStock, get, reset, save, normalise, validateList, pullFromGitHub, checkStock, decrementStock,
   isPlaceholderListing, publicList,
   ghConfig: sync.ghConfig, PLACEHOLDER_IMAGE, ID_RE,
 };

@@ -38,6 +38,8 @@ const reviews = require('./reviews');
 const securityStore = require('./security-store');
 const royalmail = require('./royalmail');
 const emails = require('./emails');
+const ledger = require('./ledger');
+const refunds = require('./refunds');
 const PENDING_STRIPE = new Map(); // stripe session id -> { items, email, userId, done }
 
 function stockError(res, problems, products, cart) {
@@ -104,6 +106,8 @@ async function saveOrder(order) {
   royalmail.onOrderPaid(r.order);
   // Order confirmation email (Gmail): background, once per order, skipped for demo orders; never throws.
   emails.onOrderPaid(r.order);
+  // Accounting ledger: sale / postage / estimated fee entries (real orders only, posted once per order).
+  if (!r.order.demo && r.order.status === 'paid') ledger.recordSale(r.order, (settingsStore.get().fees) || undefined);
   return r.order;
 }
 
@@ -187,6 +191,9 @@ function recordStripeSession(session, source) {
       subtotal: data.enriched.subtotal,
       ...(data.enriched.postage ? orderPostage(data.enriched) : { postage: null, total: data.enriched.subtotal }),
       amount_paid: session.amount_total != null ? session.amount_total / 100 : null,
+      // Stripe payment id: needed to refund the payment later (stripe.refunds.create) and to match refunds made in the Stripe dashboard.
+      stripe_payment_intent: (typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent && session.payment_intent.id) || null,
+      payment_ref: (typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent && session.payment_intent.id) || null,
       shipping_address: data.address || null,
       currency: 'GBP',
       stockProblems: taken.problems,
@@ -231,6 +238,16 @@ app.post('/api/stripe/webhook', express.raw({ type: '*/*', limit: '1mb' }), asyn
     event = payments.getStripe().webhooks.constructEvent(body, sig, secret);
   } catch (err) {
     return res.status(400).json({ error: `Webhook signature check failed: ${err.message}` });
+  }
+  if (event.type === 'charge.refunded') {
+    // A refund made in the Stripe dashboard (or elsewhere): record it on the order + ledger, once per Stripe refund id.
+    try {
+      const r = await refunds.handleChargeRefunded(event.data && event.data.object);
+      return res.json({ received: true, refunds_recorded: r.recorded, orderId: r.orderId || null, reason: r.reason });
+    } catch (err) {
+      console.error('Stripe webhook: could not record refund', err);
+      return res.status(500).json({ error: 'Could not record refund' }); // Stripe retries
+    }
   }
   if (!STRIPE_WEBHOOK_EVENTS.includes(event.type)) return res.json({ received: true, ignored: event.type });
   const session = event.data && event.data.object;
@@ -560,11 +577,17 @@ if (require.main === module) {
       .pullFromGitHub()
       .then((ok) => ok && console.log(`Loaded ${auth.customerList().length} customer accounts from the private orders repo`))
       .catch((err) => console.error('Could not load customer accounts from the orders repo:', err.message)),
+    ledger
+      .pullFromGitHub()
+      .then((ok) => ok && console.log(`Loaded ${ledger.all().length} accounting ledger entries from the private orders repo`))
+      .catch((err) => console.error('Could not load the accounting ledger from the orders repo:', err.message)),
     securityStore
       .pullFromGitHub()
       .then((ok) => ok && console.log('Loaded admin 2FA settings from the private orders repo'))
       .catch((err) => console.error('Could not load admin 2FA settings from the orders repo:', err.message)),
   ]).finally(() => app.listen(PORT, () => {
+    // orders that pre-date the ledger (or were saved while it failed) get their entries now; idempotent
+    try { const b = ledger.backfill(ordersStore.all(), settingsStore.get().fees || undefined); if (b.added.length) console.log(`Ledger: added ${b.added.length} entries for earlier orders`); } catch (err) { console.error('Ledger backfill failed:', err.message); }
     const mode = paymentMode(process.env);
     console.log(`TCG Shop running at ${BASE_URL}`);
     console.log(

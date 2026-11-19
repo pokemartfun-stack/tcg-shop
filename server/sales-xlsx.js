@@ -50,13 +50,14 @@ async function toXlsx(orders, opts) {
     ['Orders', t.orders, '0'], ['Items sold', t.items, '0'],
     ['Sales (items)', t.sales, GBP], ['Postage charged', t.postage, GBP],
     ['Takings (sales + postage)', Math.round((t.sales + t.postage) * 100) / 100, GBP],
-    ['Est. payment fees', t.fees, GBP], ['Net received', t.net, GBP],
+    ['Est. payment fees', t.fees, GBP], ['Part refunds (on orders still counted)', t.refunds, GBP], ['Net received (after part refunds)', t.net, GBP],
+    ['All refunds on orders in this range (incl. fully refunded)', s.refunds.amount, GBP],
     ['Cost of goods', t.cost, GBP], ['Postage paid', t.postage_paid, GBP], ['Profit', t.profit, GBP],
   ];
   for (const [k, v, fmt] of totals) {
     const r = ws.addRow([k, v]);
     r.getCell(2).numFmt = fmt;
-    if (k === 'Profit' || k === 'Net received') r.font = { bold: true };
+    if (k === 'Profit' || k.startsWith('Net received')) r.font = { bold: true };
   }
   ws.addRow([]);
   boldHeader(ws.addRow(['Month', 'Orders', 'Items', 'Sales', 'Postage', 'Est. fees', 'Net', 'Cost of goods', 'Postage paid', 'Profit']));
@@ -77,9 +78,10 @@ async function toXlsx(orders, opts) {
   wo.columns = cols.map((c) => ({ header: c, key: c, width: width(c) }));
   boldHeader(wo.getRow(1));
   for (const rec of sales.lineRecords(orders, opts)) {
-    const row = wo.addRow({ ...rec, order_date_uk: ukExcelDate(rec._createdAt), posted_date_uk: rec._postedAt ? ukExcelDate(rec._postedAt, false) : '' });
+    const row = wo.addRow({ ...rec, order_date_uk: ukExcelDate(rec._createdAt), posted_date_uk: rec._postedAt ? ukExcelDate(rec._postedAt, false) : '', refund_date_uk: rec._refundedAt ? ukExcelDate(rec._refundedAt, false) : '' });
     row.getCell('order_date_uk').numFmt = UK_DATETIME;
     if (rec._postedAt) row.getCell('posted_date_uk').numFmt = UK_DATE;
+    if (rec._refundedAt) row.getCell('refund_date_uk').numFmt = UK_DATE;
     for (const c of sales.MONEY_COLUMNS) {
       const cell = row.getCell(c);
       if (cell.value === '') cell.value = null; else cell.numFmt = GBP;

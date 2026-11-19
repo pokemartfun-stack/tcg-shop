@@ -79,6 +79,19 @@ function validateFees(input, base = DEFAULT_FEES) {
   return { fees: out };
 }
 
+/** Total refunded on an order. Orders marked Refunded before refunds were recorded count as fully refunded. */
+function refundedOf(order) {
+  if (!order) return 0;
+  if (Array.isArray(order.refunds) && order.refunds.length) return money(order.refunds.reduce((s, r) => s + (Number(r.amount) || 0), 0));
+  return order.status === 'refunded' ? money(order.total) : 0;
+}
+/** Units of each product put back in stock by refunds: { productId: qty }. */
+function restockedOf(order) {
+  const out = {};
+  for (const r of (order && order.refunds) || []) for (const l of r.restock || []) out[l.productId] = (out[l.productId] || 0) + (Number(l.qty) || 0);
+  return out;
+}
+
 /** Estimated processing fee for one order (0 for demo orders). */
 function estimateFee(order, fees = DEFAULT_FEES) {
   if (!order || order.demo) return 0;
@@ -93,22 +106,27 @@ function orderFigures(order, fees = DEFAULT_FEES) {
   const sales = money(order.subtotal);
   const postage = money(order.postage && order.postage.amount);
   const fee = estimateFee(order, fees);
-  const net = money(sales + postage - fee);
+  const refunded = refundedOf(order);
+  // Partial refunds reduce what was received (the estimated fee is not given back by Stripe/PayPal).
+  const net = money(sales + postage - fee - (order.status === 'refunded' || order.status === 'cancelled' ? 0 : refunded));
   let cost = 0;
   let missingCost = 0;
+  const back = restockedOf(order); // refunded items put back on the shelf are not a cost
   for (const l of order.items || []) {
-    if (Number.isFinite(l.cost_gbp)) cost += l.cost_gbp * (Number(l.qty) || 0);
-    else missingCost += Number(l.qty) || 0;
+    const qty = Math.max(0, (Number(l.qty) || 0) - (back[l.productId] || 0));
+    if (back[l.productId]) back[l.productId] = Math.max(0, back[l.productId] - (Number(l.qty) || 0));
+    if (Number.isFinite(l.cost_gbp)) cost += l.cost_gbp * qty;
+    else missingCost += qty;
   }
   cost = money(cost);
   const postagePaid = money(order.postage_paid != null && order.postage_paid !== '' ? order.postage_paid : postage);
-  return { items, sales, postage, fee, net, cost, postagePaid, profit: money(net - cost - postagePaid), missingCost };
+  return { items, sales, postage, fee, refunded, net, cost, postagePaid, profit: money(net - cost - postagePaid), missingCost };
 }
 
-const ZERO = () => ({ orders: 0, items: 0, sales: 0, postage: 0, fees: 0, net: 0, cost: 0, postage_paid: 0, profit: 0, missing_cost_items: 0 });
+const ZERO = () => ({ orders: 0, items: 0, sales: 0, postage: 0, fees: 0, refunds: 0, net: 0, cost: 0, postage_paid: 0, profit: 0, missing_cost_items: 0 });
 function addTo(t, f) {
   t.orders += 1; t.items += f.items;
-  t.sales = money(t.sales + f.sales); t.postage = money(t.postage + f.postage); t.fees = money(t.fees + f.fee);
+  t.sales = money(t.sales + f.sales); t.postage = money(t.postage + f.postage); t.fees = money(t.fees + f.fee); t.refunds = money(t.refunds + f.refunded);
   t.net = money(t.net + f.net); t.cost = money(t.cost + f.cost); t.postage_paid = money(t.postage_paid + f.postagePaid);
   t.profit = money(t.profit + f.profit); t.missing_cost_items += f.missingCost;
 }
@@ -136,7 +154,13 @@ function summarise(orders, { from, to, includeDemo = false, fees = DEFAULT_FEES 
   const totals = ZERO();
   const months = new Map();
   const excluded = { demo: 0, refunded: 0, cancelled: 0 };
+  const refunds = { orders: 0, amount: 0, partial_orders: 0 }; // everything refunded on orders in this range (full + part)
   for (const o of list) {
+    const rf = refundedOf(o);
+    if (rf > 0 && (includeDemo || !o.demo) && o.status !== 'cancelled') {
+      refunds.orders += 1; refunds.amount = money(refunds.amount + rf);
+      if (o.status !== 'refunded') refunds.partial_orders += 1;
+    }
     if (o.status === 'refunded' || o.status === 'cancelled') { excluded[o.status] += 1; continue; }
     if (o.demo && !includeDemo) { excluded.demo += 1; continue; }
     const f = orderFigures(o, fees);
@@ -147,7 +171,7 @@ function summarise(orders, { from, to, includeDemo = false, fees = DEFAULT_FEES 
   }
   return {
     from: r.from, to: r.to, includeDemo: Boolean(includeDemo), fees,
-    totals, months: [...months.values()].sort((a, b) => a.month.localeCompare(b.month)).map((m) => ({ ...m, label: monthLabel(m.month) })), excluded,
+    totals, refunds, months: [...months.values()].sort((a, b) => a.month.localeCompare(b.month)).map((m) => ({ ...m, label: monthLabel(m.month) })), excluded,
     to_post: list.filter((o) => o.status === 'paid' && counts(o, includeDemo)).length,
   };
 }
@@ -166,6 +190,7 @@ const CSV_COLUMNS = [
   'line', 'product_id', 'item', 'qty', 'unit_price_gbp', 'line_total_gbp', 'unit_cost_gbp', 'line_cost_gbp',
   'order_items_gbp', 'postage_service', 'postage_band', 'postage_charged_gbp', 'postage_paid_gbp', 'order_total_gbp',
   'est_payment_fee_gbp', 'est_net_received_gbp', 'order_cost_of_goods_gbp', 'est_profit_gbp', 'tracking_number', 'posted_date_uk',
+  'refunded_gbp', 'refund_date_uk', 'refund_reason',
 ];
 
 const MONEY_COLUMNS = new Set(CSV_COLUMNS.filter((c) => /_gbp$/.test(c)));
@@ -184,6 +209,8 @@ function lineRecords(orders, { from, to, includeDemo = false, fees = DEFAULT_FEE
     const f = orderFigures(o, fees);
     const a = o.shipping_address || {};
     const counted = !['refunded', 'cancelled'].includes(o.status);
+    const rfs = Array.isArray(o.refunds) ? o.refunds : [];
+    const lastRefundAt = rfs.length ? rfs[rfs.length - 1].at : (o.status === 'refunded' ? o.refunded_at || null : null);
     (o.items && o.items.length ? o.items : [{}]).forEach((l, i) => {
       const first = i === 0;
       const hasCost = Number.isFinite(l.cost_gbp);
@@ -200,6 +227,9 @@ function lineRecords(orders, { from, to, includeDemo = false, fees = DEFAULT_FEE
         est_payment_fee_gbp: first && counted ? f.fee : '', est_net_received_gbp: first && counted ? f.net : '',
         order_cost_of_goods_gbp: first ? f.cost : '', est_profit_gbp: first && counted ? f.profit : '',
         tracking_number: first ? o.tracking_number || '' : '', posted_date_uk: first && o.posted_at ? ukParts(o.posted_at).date : '',
+        refunded_gbp: first && f.refunded > 0 ? f.refunded : '', _refundedAt: first ? lastRefundAt : null,
+        refund_date_uk: first && lastRefundAt ? ukParts(lastRefundAt).date : '',
+        refund_reason: first ? rfs.map((r) => r.reason).filter(Boolean).join('; ') : '',
       });
     });
   }
@@ -236,4 +266,4 @@ function ukDate(d) {
   return m ? `${m[3]}/${m[2]}/${m[1]}` : String(d);
 }
 
-module.exports = { lineRecords, parseRange, ukDate, MONEY_COLUMNS, monthLabel, DEFAULT_FEES, ukParts, todayUk, taxYear, taxYearStart, presets, cleanRange, validateFees, estimateFee, orderFigures, ordersInRange, summarise, toCsv, CSV_COLUMNS };
+module.exports = { refundedOf, restockedOf, lineRecords, parseRange, ukDate, MONEY_COLUMNS, monthLabel, DEFAULT_FEES, ukParts, todayUk, taxYear, taxYearStart, presets, cleanRange, validateFees, estimateFee, orderFigures, ordersInRange, summarise, toCsv, CSV_COLUMNS };

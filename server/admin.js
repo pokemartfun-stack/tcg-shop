@@ -13,6 +13,10 @@ const ordersStore = require('./orders-store');
 const sales = require('./sales');
 const royalmail = require('./royalmail');
 const emails = require('./emails');
+const ledger = require('./ledger');
+const refunds = require('./refunds');
+const accountsExport = require('./accounts-export');
+const pdfReports = require('./pdf-reports');
 const packingSlip = require('./packing-slip');
 const { parseExplicitCategory } = require('../public/js/categories');
 const security = require('./security-store');
@@ -315,7 +319,7 @@ router.get('/orders', (req, res) => {
   const list = (everything ? ordersStore.all().slice() : sales.ordersInRange(ordersStore.all(), o.from, o.to))
     .filter((x) => o.includeDemo || !x.demo)
     .sort((a, b) => Date.parse(b.createdAt || 0) - Date.parse(a.createdAt || 0))
-    .map((x) => ({ ...x, figures: sales.orderFigures(x, o.fees), uk: sales.ukParts(x.createdAt), ...royalmail.trackerInfo(x) }));
+    .map((x) => ({ ...x, figures: sales.orderFigures(x, o.fees), uk: sales.ukParts(x.createdAt), ...royalmail.trackerInfo(x), refund: refunds.options(x) }));
   res.json({ from: o.from, to: o.to, all: everything, orders: list, storage: ordersStore.status(), royalmail: royalmail.status(), emails: emails.status() });
 });
 
@@ -367,9 +371,17 @@ router.get('/sales/xlsx', async (req, res) => {
 
 // Status workflow: paid -> posted (tracking number) -> optionally refunded / cancelled
 router.patch('/orders/:id', async (req, res) => {
-  const cur = ordersStore.find(req.params.id);
+  let cur = ordersStore.find(req.params.id);
   if (!cur) return res.status(404).json({ error: 'Order not found' });
-  const b = req.body || {};
+  const b = { ...(req.body || {}) };
+  // Choosing "Refunded" here used to just flip the status. It now records a MANUAL refund for whatever is
+  // left (no money moves — use the Refund button to send money back through Stripe), so the books stay right.
+  if (b.status === 'refunded' && cur.status !== 'refunded' && !cur.demo && refunds.remaining(cur) > 0) {
+    const rr = await refunds.refundOrder(cur.id, { amount: refunds.remaining(cur), reason: String(b.note || '').trim() || 'Marked as refunded in the admin status list', method: 'manual', by: 'admin' });
+    if (rr.error) return res.status(rr.status || 400).json({ error: rr.error });
+    delete b.status;
+    cur = ordersStore.find(cur.id);
+  }
   const patch = {};
   if (b.status !== undefined) {
     if (!ordersStore.STATUSES.includes(b.status)) return res.status(400).json({ error: 'Status must be paid, posted, refunded or cancelled' });
@@ -410,6 +422,77 @@ router.patch('/orders/:id', async (req, res) => {
   // Marked as posted just now (with a tracking number): email the buyer once, in the background.
   if (cur.status !== 'posted' && r.order.status === 'posted') emails.onOrderShipped(r.order);
   res.json({ order: r.order, github: r.github, githubError: r.githubError, storage: ordersStore.status() });
+});
+
+// Refund (full or partial). { amount, reason (required), method: 'stripe'|'manual', restock: [{ productId, qty }] }
+router.post('/orders/:id/refund', async (req, res) => {
+  const b = req.body || {};
+  const r = await refunds.refundOrder(req.params.id, { amount: b.amount, reason: b.reason, method: b.method, restock: b.restock, by: 'admin' });
+  if (r.error) return res.status(r.status || 400).json({ error: r.error });
+  res.json({ refund: r.refund, order: r.order, restock: r.restock, github: r.github, githubError: r.githubError, storage: ordersStore.status() });
+});
+
+// ---------------- Refunds list, accounting ledger, exports (PDF / Excel / CSV) ----------------
+router.get('/refunds', (req, res) => {
+  const o = salesOpts(req, res);
+  if (!o) return;
+  const list = accountsExport.refundList(ordersStore.all(), o.from, o.to, o.includeDemo);
+  res.json({ from: o.from, to: o.to, refunds: list, total: Math.round(list.reduce((a, r) => a + r.amount, 0) * 100) / 100, stripe: Boolean(process.env.STRIPE_SECRET_KEY) });
+});
+router.get('/ledger', (req, res) => {
+  const o = salesOpts(req, res);
+  if (!o) return;
+  const entries = ledger.inRange(o.from, o.to);
+  res.json({ from: o.from, to: o.to, entries: entries.slice().reverse(), totals: ledger.totals(entries), storage: ordersStore.status() });
+});
+// A correction is a NEW entry (the ledger is append-only: nothing is ever edited or deleted).
+router.post('/ledger/adjustment', (req, res) => {
+  const b = req.body || {};
+  const amount = Number(b.amount);
+  const note = String(b.note || '').trim();
+  if (!Number.isFinite(amount) || amount === 0 || Math.abs(amount) > 100000) return res.status(400).json({ error: 'Amount must be a non-zero number in £ (negative = money out)' });
+  if (!note) return res.status(400).json({ error: 'A note explaining the correction is required' });
+  const ord = b.order_id ? ordersStore.find(String(b.order_id)) : null;
+  if (b.order_id && !ord) return res.status(404).json({ error: 'Order not found' });
+  const r = ledger.append({ type: 'adjustment', amount, note, order_id: ord ? ord.id : '', order_number: ord ? ord.order_number || ord.id : '', customer: ord ? (ord.shipping_address && ord.shipping_address.name) || ord.email || '' : '', method: 'manual', reference: String(b.reference || '').slice(0, 120), by: 'admin' }, 'ledger: adjustment');
+  res.json({ entry: r.added[0], storage: ordersStore.status() });
+});
+router.get('/ledger/csv', (req, res) => {
+  const o = salesOpts(req, res);
+  if (!o) return;
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="po-ke-mart-fun-ledger-${o.from}-to-${o.to}.csv"`);
+  res.send('\uFEFF' + accountsExport.ledgerCsv(ledger.inRange(o.from, o.to)));
+});
+router.get('/ledger/xlsx', async (req, res) => {
+  const o = salesOpts(req, res);
+  if (!o) return;
+  try {
+    const buf = await accountsExport.ledgerXlsx(ledger.inRange(o.from, o.to), o);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="po-ke-mart-fun-ledger-${o.from}-to-${o.to}.xlsx"`);
+    res.send(buf);
+  } catch (err) { console.error('Ledger Excel failed:', err); res.status(500).json({ error: 'Could not build the Excel file' }); }
+});
+router.get('/accounts/report.pdf', async (req, res) => {
+  const o = salesOpts(req, res);
+  if (!o) return;
+  try {
+    const buf = await pdfReports.reportPdf({ from: o.from, to: o.to, orders: ordersStore.all(), entries: ledger.inRange(o.from, o.to), includeDemo: o.includeDemo, fees: o.fees });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="po-ke-mart-fun-accounts-${o.from}-to-${o.to}.pdf"`);
+    res.send(buf);
+  } catch (err) { console.error('Accounts PDF failed:', err); res.status(500).json({ error: 'Could not build the PDF' }); }
+});
+router.get('/orders/:id/receipt.pdf', async (req, res) => {
+  const o = ordersStore.find(req.params.id);
+  if (!o) return res.status(404).json({ error: 'Order not found' });
+  try {
+    const buf = await pdfReports.receiptPdf(o);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="receipt-${String(o.order_number || o.id).replace(/[^A-Za-z0-9_-]/g, '')}.pdf"`);
+    res.send(buf);
+  } catch (err) { console.error('Receipt PDF failed:', err); res.status(500).json({ error: 'Could not build the PDF' }); }
 });
 
 // Resend a customer email (admin pressed the button). { kind: 'confirmation' | 'shipped' }
