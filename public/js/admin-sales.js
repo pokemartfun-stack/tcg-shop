@@ -31,6 +31,7 @@
     $('s-range-error').hidden = !err;
     ['s-from', 's-to'].forEach((id) => $(id).setAttribute('aria-invalid', err ? 'true' : 'false'));
     $('s-csv').disabled = $('s-xlsx').disabled = Boolean(err);
+    if ($('s-pdf')) $('s-pdf').disabled = Boolean(err);
     $('sales-section').classList.toggle('range-bad', Boolean(err)); // grey out figures from the last good range
     if (err) $('s-range-text').textContent = '';
     if (!err) {
@@ -63,6 +64,7 @@
       card('Orders', String(t.orders)), card('Items sold', String(t.items)),
       card('Sales (items)', t.sales), card('Postage charged', t.postage),
       card('Takings', t.sales + t.postage), card('Est. payment fees', -t.fees),
+      card('Part refunds', -t.refunds), card('All refunds (full + part)', -s.refunds.amount),
       card('Net received', t.net, 'hl'), card('Cost of goods', -t.cost),
       card('Postage paid', -t.postage_paid), card('Profit', t.profit, 'hl'),
     ].join('');
@@ -70,7 +72,8 @@
     notes.push(`Fees are <strong>estimated</strong> (Stripe ${s.fees.stripe.percent}% + ${gbp(s.fees.stripe.fixed)}, PayPal ${s.fees.paypal.percent}% + ${gbp(s.fees.paypal.fixed)}).`);
     if (t.missing_cost_items) notes.push(`${t.missing_cost_items} item line(s) have no cost price, so profit is overstated.`);
     const ex = s.excluded;
-    if (ex.refunded || ex.cancelled) notes.push(`Not counted: ${ex.refunded} refunded, ${ex.cancelled} cancelled.`);
+    if (ex.refunded || ex.cancelled) notes.push(`Not counted: ${ex.refunded} fully refunded, ${ex.cancelled} cancelled.`);
+    if (s.refunds.amount) notes.push(`Refunds on these orders: ${gbp(s.refunds.amount)} (part refunds reduce <em>Net received</em>; fully refunded orders are left out).`);
     if (ex.demo && !s.includeDemo) notes.push(`${ex.demo} demo/test order(s) hidden.`);
     if (s.to_post) notes.push(`<strong>${s.to_post} order(s) waiting to be posted.</strong>`);
     $('s-notes').innerHTML = notes.join(' ');
@@ -107,7 +110,8 @@
   }
 
   function badgeHtml(o) {
-    return `<span class="badge-s st-${o.stage}">${STAGE_LABEL[o.stage] || o.stage}</span>${o.demo ? '<span class="badge-s demo">demo</span>' : ''}${(o.problems || []).length ? '<span class="badge-s problem" title="' + A().esc(o.problems.join(' · ')) + '">⚠ problem</span>' : ''}`;
+    const part = o.refund && o.refund.state === 'partial' ? `<span class="badge-s refunded-part" title="Part refund recorded">Part refunded ${gbp(o.refund.refunded)}</span>` : '';
+    return `<span class="badge-s st-${o.stage}">${STAGE_LABEL[o.stage] || o.stage}</span>${part}${o.demo ? '<span class="badge-s demo">demo</span>' : ''}${(o.problems || []).length ? '<span class="badge-s problem" title="' + A().esc(o.problems.join(' · ')) + '">⚠ problem</span>' : ''}`;
   }
 
   function rmStateHtml(o) {
@@ -131,6 +135,7 @@
       else if (rm.connected && !r.orderIdentifier && o.shipping_address) b.push(`<button type="button" data-act="push" data-id="${id}">${r.state === 'error' ? '↻ Retry Royal Mail' : 'Send to Royal Mail'}</button>`);
       if (r.orderIdentifier && (rm.labelsApi === false || !compact)) b.push(`<a class="btn-link" href="${esc(rm.clickAndDropUrl || 'https://business.parcel.royalmail.com/')}" target="_blank" rel="noopener">Open in Click &amp; Drop ↗</a>`);
     }
+    if (!o.demo && o.refund && o.refund.remaining > 0 && o.status !== 'cancelled') b.push(`<button type="button" class="danger" data-act="refund" data-id="${id}">Refund…</button>`);
     b.push(`<button type="button" class="ghost" data-act="slip" data-id="${id}">Packing slip</button>`);
     if (compact) b.push(`<button type="button" class="ghost" data-toggle="${id}">${open.has(o.id) ? 'Hide' : 'Details'}</button>`);
     return `<div class="acts">${b.join('')}</div>`;
@@ -154,6 +159,17 @@
       <p class="hint">From ${A().esc(mail.from || '')} to ${A().esc(o.email || 'no email on order')}</p>`;
   }
 
+  // Refunds on this order (what was refunded, how, why) + receipt PDF
+  function refundsHtml(o) {
+    const esc = A().esc;
+    const list = (o.refunds || []).map((r) => `<li><time>${esc(when(r.at))}</time> <strong>${gbp(r.amount)}</strong> <span class="badge-s ${r.method === 'manual' ? 'manual' : 'stripe'}">${r.method === 'manual' ? 'manual — no money moved' : 'Stripe'}</span> <span class="hint">${esc(r.reason || '')}${r.stripe_refund_id ? ' · ' + esc(r.stripe_refund_id) : ''}${r.by ? ' · by ' + esc(r.by) : ''}</span></li>`).join('');
+    const legacy = !(o.refunds || []).length && o.status === 'refunded' ? '<li class="hint">Marked as refunded before refund details were recorded.</li>' : '';
+    const left = o.refund && !o.demo ? o.refund.remaining : 0;
+    return `<h4>Refunds</h4>${list || legacy ? `<ul class="mail-status">${list}${legacy}</ul>` : '<p class="hint">No refunds.</p>'}
+      ${o.refund && o.refund.refunded > 0 ? `<p class="hint">Refunded ${gbp(o.refund.refunded)} · ${gbp(left)} left to refund</p>` : ''}
+      <div class="acts">${left > 0 && o.status !== 'cancelled' ? `<button type="button" class="danger" data-act="refund" data-id="${esc(o.id)}">Refund…</button>` : ''}<button type="button" class="ghost" data-act="receipt" data-id="${esc(o.id)}">Receipt PDF</button></div>`;
+  }
+
   function detailHtml(o) {
     const esc = A().esc;
     const f = o.figures;
@@ -170,6 +186,7 @@
         ${o.payment_ref ? '<br>Payment ref: ' + esc(o.payment_ref) : ''}</p></div>
       <div><h4>Status history</h4><ol class="hist">${hist || '<li class="hint">No history</li>'}</ol>
         <h4>Royal Mail</h4><p class="rm-line">${rmStateHtml(o)}</p>
+        ${refundsHtml(o)}
         ${emailsHtml(o)}
         ${probs ? '<h4>Problems</h4><ul class="probs">' + probs + '</ul>' : ''}
         ${actionsHtml(o, false)}</div>
@@ -348,12 +365,14 @@
   }
 
   document.addEventListener('admin:ready', init);
+  document.addEventListener('admin:orders-changed', () => { load(); });
   document.addEventListener('DOMContentLoaded', () => {
     if (!$('sales-section')) return;
     // updates straight away (short pause so typing a date digit by digit doesn't reload each keypress)
     let timer;
     ['s-from', 's-to'].forEach((id) => $(id).addEventListener('change', () => { clearTimeout(timer); timer = setTimeout(load, 350); }));
     $('s-demo').addEventListener('change', load);
+    if ($('s-pdf')) $('s-pdf').addEventListener('click', () => { if (checkRange() && window.TCGAdminAcc) window.TCGAdminAcc.download('/accounts/report.pdf?' + query(), 'accounts-report.pdf'); });
     let st;
     $('tr-search').addEventListener('input', () => { clearTimeout(st); st = setTimeout(renderOrders, 150); });
     $('tr-in-range').addEventListener('change', load);
@@ -387,6 +406,8 @@
       if (b.dataset.act === 'posted') saveOrder(b.closest('form'), 'posted');
       else if (b.dataset.act === 'slip') printSlips([id]);
       else if (b.dataset.act === 'label') printLabels([id]);
+      else if (b.dataset.act === 'refund') { const ord = orders.find((x) => x.id === id); if (ord && window.TCGAdminAcc) window.TCGAdminAcc.open(ord); }
+      else if (b.dataset.act === 'receipt') { window.TCGAdminAcc.download('/orders/' + encodeURIComponent(id) + '/receipt.pdf', 'receipt.pdf'); }
       else if (b.dataset.act === 'resend-email') {
         const kind = b.dataset.kind || 'confirmation';
         if (!confirm(`Email the ${kind === 'shipped' ? 'shipped' : 'order confirmation'} message to this customer now?`)) return;
