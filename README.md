@@ -36,6 +36,43 @@ are stored only as scrypt hashes and are never sent to the browser or shown in t
 (or `USERS_FILE`). The admin **Customers** section lists name, email, sign-up date and number of
 orders (matched by email), newest first, with a search box. It is read-only.
 
+## Customer order emails (Gmail)
+
+The shop can email buyers from the shop Gmail account:
+
+1. **Order confirmation** — sent in the background as soon as a real (non-demo) order is confirmed paid:
+   thanks, order number, items, postage, total, delivery address, a "Track your order" link
+   (`/track?number=…`) and contact details.
+2. **Posted email** — sent when an order is marked as shipped (admin **Mark as shipped**, or Royal
+   Mail Click & Drop sync) with its Royal Mail tracking number and tracking link.
+
+Each is sent **at most once per order** (the time is saved on the order as `confirmation_emailed_at` /
+`shipped_emailed_at`). Emails never block or fail an order, the Stripe webhook or the admin: if Gmail
+refuses, one line is logged and the order is unaffected. Replies go to the shop Gmail address. Demo
+orders get no emails. Orders placed before the emails were switched on are not emailed automatically
+(use the admin **Send confirmation email** button on an order if you want to).
+In **admin → Sales → Order tracker → Details** each order shows whether the emails were sent (and when), with
+**Resend confirmation email** / **Resend shipped email** buttons.
+
+### Turn it on (you do this, I never see the password)
+
+1. Sign in to the shop Gmail account at <https://myaccount.google.com> → **Security**.
+2. Turn on **2-Step Verification** (required by Google before app passwords exist).
+3. Go to <https://myaccount.google.com/apppasswords> (or search "App passwords" in the account page),
+   name it e.g. `Po-ke Mart Fun shop`, press **Create** and copy the 16-letter password Google shows
+   (spaces don't matter).
+4. In Render open **tcg-shop-1 → Environment** and add:
+   - `GMAIL_USER` = the shop Gmail address
+   - `GMAIL_APP_PASSWORD` = the 16-letter app password
+   - optional: `MAIL_FROM_NAME` (default `Po-ke Mart Fun`), `SHOP_URL` (default
+     `https://tcg-shop-1.onrender.com`), and `CONTACT_EMAIL` (the address printed in emails; default is `GMAIL_USER`).
+5. Save; Render restarts the shop. The logs say `Order emails: on (from …)`. If either variable is
+   missing they say `order emails off` and nothing is sent.
+
+Notes: a normal Gmail account can send about 500 emails a day (plenty here). Gmail emails come from
+your Gmail address, so a few may land in spam at first — ask early buyers to check and mark the email
+"Not spam". To stop emails, delete `GMAIL_APP_PASSWORD` (or revoke it at Google).
+
 ## Info pages, footer and placeholders
 
 - `/contact`, `/faq`, `/privacy`, `/terms` (also with `.html`), `/robots.txt` and `/sitemap.xml`.
