@@ -239,6 +239,33 @@
     .badge-s.st-refunded, .badge-s.st-cancelled { background: #6b728055; color: #d1d5db; }
     .badge-s.problem { background: #dc262644; color: #fca5a5; margin-left: 4px; }
     .admin .orders-table tr.order-row.has-problem td:first-child { box-shadow: inset 3px 0 0 #dc2626; }
+    /* ---- admin tabs ---- */
+    .admin-tabs { display: flex; gap: 4px; overflow-x: auto; margin: 0 0 14px; padding: 6px 2px; position: sticky; top: 0; z-index: 20; background: #0f1117; border-bottom: 2px solid #E3350D; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+    .admin-tabs button { flex: 0 0 auto; padding: 9px 16px; border-radius: 8px 8px 0 0; background: #1D2C5E; color: #FFCB05; font-weight: 700; font-size: 14px; border: 1px solid #FFCB0566; border-bottom: 0; white-space: nowrap; }
+    .admin-tabs button[aria-selected="true"] { background: #E3350D; color: #fff; border-color: #E3350D; }
+    .admin-tabs button .tab-n { margin-left: 6px; background: #FFCB05; color: #1D2C5E; border-radius: 999px; padding: 0 7px; font-size: 11px; }
+    .acc-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 10px 14px; margin: 10px 0; }
+    .acc-controls label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; font-weight: 700; color: #9aa3b5; }
+    .admin button.pdf { background: #b91c1c; }
+    .rf-found { display: grid; gap: 6px; margin: 8px 0 14px; }
+    .rf-found .rf-hit { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; padding: 8px 10px; border: 1px solid #8884; border-radius: 8px; background: #fff1; font-size: 13px; }
+    .badge-s.refunded-part { background: #7c3aed; color: #fff; }
+    .badge-s.manual { background: #6b7280; color: #fff; } .badge-s.stripe { background: #635bff; color: #fff; }
+    .ac-table td.neg, .rf-table td.neg { color: #ff8a8a; }
+    .ac-table .t-sale, .ac-table .t-postage { color: #4ade80; } .ac-table .t-refund, .ac-table .t-fee { color: #ff8a8a; } .ac-table .t-adjustment { color: #FFCB05; }
+    #refund-dialog { width: min(560px, calc(100vw - 24px)); max-height: calc(100vh - 24px); overflow: auto; border: 2px solid #E3350D; border-radius: 12px; background: #151826; color: #f2f4f8; padding: 18px; }
+    #refund-dialog button { cursor: pointer; padding: 9px 16px; border-radius: 6px; border: 0; background: #2563eb; color: #fff; font: inherit; font-weight: 600; }
+    #refund-dialog button.ghost { background: #6b7280; } #refund-dialog button.danger { background: #dc2626; }
+    #refund-dialog input { padding: 7px; border-radius: 6px; border: 1px solid #8886; font: inherit; background: #fff; color: #111; }
+    #refund-dialog::backdrop { background: rgba(0,0,0,.65); }
+    #refund-dialog h3 { margin: 0 0 6px; } #refund-dialog label { display: block; margin: 10px 0 0; font-size: 13px; font-weight: 700; }
+    #refund-dialog label.inline { display: flex; gap: 8px; align-items: flex-start; font-weight: 400; margin: 6px 0; }
+    #refund-dialog input[type=text], #refund-dialog input[type=number]:not(.rf-q) { width: 100%; margin-top: 4px; box-sizing: border-box; }
+    #refund-dialog input#rf-amount { width: 140px; } #refund-dialog fieldset { border: 1px solid #8886; border-radius: 8px; margin: 12px 0 0; padding: 8px 10px; }
+    #refund-dialog .rf-line { display: flex; gap: 8px; align-items: center; justify-content: space-between; font-size: 13px; margin: 4px 0; } #refund-dialog .rf-q { width: 64px; }
+    #refund-dialog .rf-btns { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; flex-wrap: wrap; }
+    #refund-dialog .rf-confirm { background: #3b1218; border: 1px solid #dc2626; border-radius: 8px; padding: 12px 14px; font-size: 15px; line-height: 1.5; }
+    #refund-dialog .rf-confirm.manual { background: #1f2937; border-color: #6b7280; }
     .mail-status { margin: 0 0 6px; padding-left: 4px; list-style: none; font-size: 13px; } .mail-status li { margin: 2px 0; }
     .hist { margin: 0 0 8px; padding-left: 18px; font-size: 13px; } .hist li { margin: 2px 0; } .hist time { color: #9aa3b5; font-size: 12px; }
     .probs { margin: 0 0 8px; padding-left: 18px; color: #fca5a5; font-size: 13px; } .rm-line { font-size: 13px; } .err-t { color: #fca5a5; }
@@ -290,11 +317,11 @@
 
     <div id="panel" hidden>
       <p><span id="sync"></span> · <a href="/" target="_blank">View shop</a> · <button class="ghost" id="logout">Log out</button></p>
-      <nav class="admin-nav" aria-label="Admin sections"><a href="#security-section">Security</a><a href="#sales-section">Sales</a><a href="#tracker">Order tracker</a><a href="#reviews-section">Reviews</a><a href="#customers-section">Customers</a><a href="#postage-section">Postage</a><a href="#import-section">Import</a><a href="#add-section">Add product</a><a href="#cards-section">Cards</a><a href="#banner-section">Shop look</a></nav>
+      <nav class="admin-tabs" id="admin-tabs" role="tablist" aria-label="Admin sections"></nav>
       <div class="storage-warn" id="orders-warn" hidden></div>
       <div class="storage-warn" id="sec-reset-banner" hidden role="status">2FA was reset; remove ADMIN_2FA_RESET from Render and set 2FA up again.</div>
 
-      <section id="security-section">
+      <section id="security-section" data-tab="security">
         <h2>Security / Two-factor login</h2>
         <p class="hint">After your password, a 6-digit code from Google Authenticator or Microsoft Authenticator is required to open this admin page. If you lose your phone, use a backup code, or the emergency reset described in <code>ADMIN-2FA.md</code>.</p>
         <p id="sec-status">Two-factor login is off.</p>
@@ -365,29 +392,13 @@
       </section>
 
 
-      <section id="sales-section" class="sales">
-        <h2>Sales</h2>
-        <div class="sales-controls">
-          <label>From <input type="date" id="s-from" lang="en-GB" required /></label>
-          <label>To <input type="date" id="s-to" lang="en-GB" required /></label>
-          <label class="inline"><input type="checkbox" id="s-demo" /> Include demo orders</label>
-          <span class="dl-buttons">
-            <button type="button" class="ghost" id="s-csv">Download CSV</button>
-            <button type="button" class="xlsx" id="s-xlsx">Download Excel</button>
-          </span>
-        </div>
-        <p class="range-line" id="s-range-text" aria-live="polite"></p>
-        <p class="range-error" id="s-range-error" role="alert" hidden></p>
-        <div class="sales-cards" id="s-cards"></div>
-        <p class="hint" id="s-notes"></p>
-        <details class="sales-months" id="s-months-wrap"><summary>By month</summary><div class="sales-scroll"><table class="sales-table" id="s-months"></table></div></details>
-
-        <h3 id="tracker">Order tracker <span class="hint" id="s-orders-count"></span></h3>
+      <section id="orders-section" data-tab="orders">
+        <h2 id="tracker">Orders <span class="hint" id="s-orders-count"></span></h2>
         <div class="rm-box off" id="rm-box"></div>
         <div class="tr-tabs" role="tablist" aria-label="Filter orders" id="tr-tabs"></div>
         <div class="tr-tools">
           <input type="search" id="tr-search" placeholder="Search order no., name or postcode" aria-label="Search orders" autocomplete="off" />
-          <label class="inline"><input type="checkbox" id="tr-in-range" /> Only the dates above</label>
+          <label class="inline"><input type="checkbox" id="tr-in-range" /> Only the dates chosen in the Sales tab</label>
           <span class="tr-print">
             <button type="button" id="tr-print-all" disabled>🖨 Print all labels</button>
             <button type="button" class="ghost" id="tr-slips-all">Print all packing slips</button>
@@ -398,6 +409,25 @@
           <thead><tr><th>Date (UK)</th><th>Order</th><th>Customer</th><th>Items</th><th class="num">Total</th><th>Postage</th><th>Status</th><th>Tracking</th><th>Actions</th></tr></thead>
           <tbody id="s-orders"></tbody>
         </table></div>
+      </section>
+
+      <section id="sales-section" data-tab="sales" class="sales">
+        <h2>Sales</h2>
+        <div class="sales-controls">
+          <label>From <input type="date" id="s-from" lang="en-GB" required /></label>
+          <label>To <input type="date" id="s-to" lang="en-GB" required /></label>
+          <label class="inline"><input type="checkbox" id="s-demo" /> Include demo orders</label>
+          <span class="dl-buttons">
+            <button type="button" class="ghost" id="s-csv">Download CSV</button>
+            <button type="button" class="xlsx" id="s-xlsx">Download Excel</button>
+            <button type="button" class="pdf" id="s-pdf">Download PDF report</button>
+          </span>
+        </div>
+        <p class="range-line" id="s-range-text" aria-live="polite"></p>
+        <p class="range-error" id="s-range-error" role="alert" hidden></p>
+        <div class="sales-cards" id="s-cards"></div>
+        <p class="hint" id="s-notes"></p>
+        <details class="sales-months" id="s-months-wrap"><summary>By month</summary><div class="sales-scroll"><table class="sales-table" id="s-months"></table></div></details>
 
         <details class="fees-box" id="fees-box"><summary>Payment fees used for the estimates</summary>
           <form id="fees-form" class="fees-form">
@@ -412,7 +442,57 @@
         <div class="result" id="sales-result"></div>
       </section>
 
-      <section id="reviews-section">
+      <section id="refunds-section" data-tab="refunds">
+        <h2>Refunds <span class="hint" id="rf-count"></span></h2>
+        <p class="hint">Refund a whole order or part of it. Card payments are refunded through Stripe (same keys, so test payments stay test). PayPal and other payments are <strong>recorded as manual refunds</strong> — no money is moved by the shop. Every refund is saved on the order and in the accounts ledger, and refunds made in your Stripe dashboard are picked up automatically.</p>
+        <div class="rf-find">
+          <label>Find an order to refund <input type="search" id="rf-search" placeholder="Order no., name or email" autocomplete="off" /></label>
+          <div id="rf-found" class="rf-found"></div>
+        </div>
+        <div class="acc-controls">
+          <label>From <input type="date" id="rf-from" lang="en-GB" /></label>
+          <label>To <input type="date" id="rf-to" lang="en-GB" /></label>
+          <label>Quick range <select id="rf-preset"></select></label>
+        </div>
+        <div class="sales-scroll"><table class="sales-table rf-table">
+          <thead><tr><th>Date (UK)</th><th>Order</th><th>Customer</th><th class="num">Amount</th><th>How</th><th>Reason</th><th>By</th><th>Stock</th></tr></thead>
+          <tbody id="rf-rows"><tr><td colspan="8" class="hint">Loading…</td></tr></tbody>
+        </table></div>
+        <p class="hint" id="rf-total"></p>
+      </section>
+
+      <section id="accounts-section" data-tab="accounts">
+        <h2>Accounts <span class="hint" id="ac-count"></span></h2>
+        <p class="hint">A permanent, <strong>append-only</strong> record of money events: sales, postage charged, <em>estimated</em> payment fees and refunds. Entries are never edited or deleted — a mistake is fixed by adding a correction entry. Saved in the private orders repo, like the orders.</p>
+        <div class="acc-controls">
+          <label>From <input type="date" id="ac-from" lang="en-GB" /></label>
+          <label>To <input type="date" id="ac-to" lang="en-GB" /></label>
+          <label>Quick range <select id="ac-preset"></select></label>
+          <span class="dl-buttons">
+            <button type="button" class="ghost" id="ac-csv">Ledger CSV</button>
+            <button type="button" class="xlsx" id="ac-xlsx">Ledger Excel</button>
+            <button type="button" class="pdf" id="ac-pdf">PDF report</button>
+          </span>
+        </div>
+        <p class="range-error" id="ac-error" role="alert" hidden></p>
+        <div class="sales-cards" id="ac-cards"></div>
+        <div class="sales-scroll"><table class="sales-table ac-table">
+          <thead><tr><th>Date (UK)</th><th>Type</th><th>Order</th><th>Customer</th><th class="num">Amount</th><th>Method</th><th>Reference</th><th>Note</th></tr></thead>
+          <tbody id="ac-rows"><tr><td colspan="8" class="hint">Loading…</td></tr></tbody>
+        </table></div>
+        <details class="fees-box" id="ac-adjust"><summary>Add a correction entry</summary>
+          <form id="ac-adjust-form" class="fees-form">
+            <p class="hint">Use this only to fix the books. It adds a new line (money in is +, money out is −); nothing already recorded is changed.</p>
+            <label>Amount £ <input type="number" step="0.01" name="amount" required /></label>
+            <label>Order id (optional) <input type="text" name="order_id" maxlength="120" /></label>
+            <label>Note (required) <input type="text" name="note" maxlength="500" required /></label>
+            <button type="submit">Add entry</button>
+          </form>
+        </details>
+        <p class="hint">Company details on the PDFs: PO-KE-MART-FUN LIMITED, company no. 16870472. Registered address and VAT show as “[… — to confirm]” until <code>COMPANY_ADDRESS</code> / <code>VAT_NUMBER</code> are set on Render.</p>
+      </section>
+
+      <section id="reviews-section" data-tab="reviews">
         <h2>Customer reviews <span class="hint" id="rv-counts"></span></h2>
         <div class="rv-toggle-row">
           <label class="switch"><input type="checkbox" id="rv-enabled" /><span class="slider" aria-hidden="true"></span><span class="switch-text" id="rv-enabled-text">Reviews are OFF</span></label>
@@ -432,7 +512,7 @@
         </table></div>
       </section>
 
-      <section id="customers-section">
+      <section id="customers-section" data-tab="customers">
         <h2>Customers <span class="hint" id="cu-count"></span></h2>
         <p class="hint">Shoppers who registered an account (guest checkout needs no account). Newest first. <strong>Orders</strong> counts every order placed with the same email address. Accounts are saved in the private orders repo with the orders. Passwords are never shown or stored in readable form.</p>
         <div class="cu-tools">
@@ -445,7 +525,7 @@
         </table></div>
       </section>
 
-      <section id="banner-section">
+      <section id="banner-section" data-tab="shop">
         <h2>Shop banner</h2>
         <form id="settings-form" class="grid">
           <label>Shop name<input name="shop_name" maxlength="60" required /></label>
@@ -466,7 +546,7 @@
         <div class="result" id="banner-result"></div>
       </section>
 
-      <section id="logo-section">
+      <section id="logo-section" data-tab="shop">
         <h2>Shop logo</h2>
         <p class="hint">Shown as a round badge in the top bar of every page, and used for the browser tab icon (favicon). Saved as <code>public/images/logo.png</code> (or <code>logo.gif</code>) in your GitHub repo. A square picture works best.</p>
         <div class="logo-row">
@@ -484,7 +564,7 @@
         <div class="result" id="logo-result"></div>
       </section>
 
-      <section id="background-section">
+      <section id="background-section" data-tab="shop">
         <h2>Page background</h2>
         <p class="hint">The picture behind the whole shop (shop, cart, checkout). It is lightly dimmed and blurred so cards and prices stay easy to read. Saved as <code>public/images/background.jpg</code> (or <code>background.gif</code>) in your GitHub repo, so it moves with the site if you change host.</p>
         <div class="bg-preview" id="bg-preview">
@@ -505,7 +585,7 @@
         <div class="result" id="bg-result"></div>
       </section>
 
-      <section id="postage-section">
+      <section id="postage-section" data-tab="shop">
         <h2>Postage — Royal Mail Tracked 48</h2>
         <p class="hint">Each order is sent as <strong>one</strong> Royal Mail Tracked 48 item and charged <strong>once</strong>, at the price of the largest size in the basket (e.g. 3 single cards + 1 lot = one Small Parcel charge). Set each card's size in the card list below. Default prices are Royal Mail's online (Click &amp; Drop) Tracked 48 prices from 5 October 2026.</p>
         <form id="postage-form">
@@ -519,7 +599,7 @@
         <div class="result" id="postage-result"></div>
       </section>
 
-      <section id="import-section">
+      <section id="import-section" data-tab="products">
         <h2>Upload JSON file + photos</h2>
         <p>Use the <code>vinted_listings.json</code> from the Vinted Listing Tool, or a shop file (<code>id, title, price_gbp, condition, category, image, stock</code>). Photos are matched to cards by file name.</p>
         <p><label>1. JSON file: <input type="file" id="json-file" accept=".json,application/json" /></label></p>
@@ -559,7 +639,7 @@
         <div class="result" id="import-result"></div>
       </section>
 
-      <section id="bulk-section">
+      <section id="bulk-section" data-tab="products">
         <h2>Bulk photos for existing cards</h2>
         <p>Already imported the cards? Add all their photos here — matched to cards by file name (from the JSON <code>photos</code>) or by card ID (e.g. <code>pikachu-151.jpg</code>).</p>
         <div class="dropzone" id="bulk-drop">
@@ -577,7 +657,7 @@
         <div class="result" id="bulk-result"></div>
       </section>
 
-      <section id="add-section">
+      <section id="add-section" data-tab="products">
         <h2>Add a product</h2>
         <p class="hint">Pick the <strong>Category</strong> to choose the shop tab: Trading cards / Trading card lots → <em>Cards &amp; Lots</em>, Sealed products → <em>Sealed Products</em>, Accessories &amp; Merch → <em>Accessories &amp; Merch</em>.</p>
         <form id="add-form" class="grid">
@@ -613,7 +693,7 @@
         </form>
       </section>
 
-      <section id="cards-section">
+      <section id="cards-section" data-tab="products">
         <h2>Cards in stock (<span id="count">0</span>) · <span id="oos-count"></span></h2>
         <label class="filterbar"><input type="checkbox" id="only-oos" /> Show out-of-stock only</label>
         <button type="button" id="fix-order" title="Sort every card's photos by the order in your Vinted JSON (photo first)">Fix photo order</button>
@@ -645,11 +725,35 @@
       </section>
     </div>
   </main>
+
+  <dialog id="refund-dialog" aria-labelledby="rf-title">
+    <form id="refund-form" autocomplete="off">
+      <h3 id="rf-title">Refund order <span id="rf-order"></span></h3>
+      <p class="hint" id="rf-summary"></p>
+      <div id="rf-step1">
+        <fieldset class="rf-method"><legend>How is the money going back?</legend>
+          <label class="inline"><input type="radio" name="rf-method" value="stripe" id="rf-m-stripe" /> Refund through Stripe (money goes back to the buyer's card)</label>
+          <label class="inline"><input type="radio" name="rf-method" value="manual" id="rf-m-manual" /> Record a refund I already made another way (no money moved by the shop)</label>
+        </fieldset>
+        <label>Amount to refund £ <input type="number" id="rf-amount" step="0.01" min="0.01" required /> <button type="button" class="ghost" id="rf-full">Refund everything left</button></label>
+        <label>Reason (required) <input type="text" id="rf-reason" maxlength="300" placeholder="e.g. Card damaged in the post" required /></label>
+        <fieldset id="rf-lines" class="rf-lines"><legend>Put items back in stock (optional)</legend><div id="rf-lines-body"></div></fieldset>
+        <p class="range-error" id="rf-error" role="alert" hidden></p>
+        <div class="rf-btns"><button type="button" class="ghost" id="rf-cancel">Cancel</button> <button type="submit" id="rf-review">Review refund →</button></div>
+      </div>
+      <div id="rf-step2" hidden>
+        <div class="rf-confirm" id="rf-confirm-text"></div>
+        <div class="rf-btns"><button type="button" class="ghost" id="rf-back">← Back</button> <button type="button" class="danger" id="rf-go">Yes, refund now</button></div>
+      </div>
+    </form>
+  </dialog>
   <script src="/js/categories.js"></script>
   <script src="/js/admin.js"></script>
   <script src="/js/admin-2fa.js"></script>
   <script src="/js/admin-sales.js"></script>
   <script src="/js/admin-reviews.js"></script>
   <script src="/js/admin-customers.js"></script>
+  <script src="/js/admin-accounts.js"></script>
+  <script src="/js/admin-tabs.js"></script>
 </body>
 </html>
