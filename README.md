@@ -73,6 +73,47 @@ Notes: a normal Gmail account can send about 500 emails a day (plenty here). Gma
 your Gmail address, so a few may land in spam at first — ask early buyers to check and mark the email
 "Not spam". To stop emails, delete `GMAIL_APP_PASSWORD` (or revoke it at Google).
 
+## Admin tabs, refunds and the accounts ledger
+
+**Admin tabs.** `/admin` now has tabs along the top: **Orders** (the order tracker), **Sales**, **Refunds**,
+**Accounts**, **Customers**, **Reviews**, **Products** (import, bulk photos, add, cards), **Shop look &
+postage**, **Security**. The old jump links (`/admin#tracker`, `#sales-section` …) still work.
+
+**Refunds** (Orders → *Refund…*, or the Refunds tab → *Find an order to refund*): full or partial amount in £,
+a reason (required), and optionally which items to put back in stock. A confirmation step shows exactly
+what will happen before anything is sent.
+- *Card payments (Stripe)* are refunded through the Stripe Refunds API with the key already in
+  `STRIPE_SECRET_KEY` (a test key stays test mode), with an idempotency key so a double click can't refund twice.
+  The shop stores each order's Stripe payment id (`stripe_payment_intent`); older orders are looked up in Stripe.
+- *PayPal / anything else, or no Stripe keys:* **"Record a refund I already made another way"** — no money is
+  moved by the shop; it is labelled *manual* everywhere (order, ledger, exports).
+- You can never refund more than what is left. When the whole order is refunded its status becomes **Refunded**;
+  a part refund shows a purple **Part refunded £x** badge and the order stays active. Choosing *Refunded* in the old
+  status list now records a manual refund for the rest.
+- Refunds made in the **Stripe dashboard** are recorded automatically (webhook event `charge.refunded`, see above),
+  de-duplicated by the Stripe refund id.
+- Each refund (`refunds[]` on the order) keeps: amount, reason, method (stripe/manual), Stripe refund id,
+  date/time, who, and any stock put back. It also appears in the order's status history.
+
+**Accounts ledger** (Accounts tab). An **append-only** list of money events — *sale* (items), *postage* (charged),
+*fee* (**estimated** Stripe/PayPal fee) and *refund* (negative) — plus *adjustment* (a correction you add by hand).
+Entries are never edited or deleted; a mistake is fixed with a new correcting entry. Each entry has an id, UK date
+and time, type, order number, customer name, amount, method, reference, note and who made it.
+It is stored in the private orders repo as `ledger.json` (the same place as the orders; `[skip render]` commits, saved
+one at a time, merged by entry id when the server restarts; it never overwrites the repo copy before reading it). Without
+`ORDERS_GITHUB_REPO` it lives in the local `data/ledger.json` (or `LEDGER_FILE`). Orders that pre-date the ledger are
+added automatically when the server starts.
+
+**Exports.** Accounts tab (date range): **Ledger CSV**, **Ledger Excel**, **PDF report** (sales summary, refunds list,
+ledger). Sales tab: the existing Orders CSV / Excel (now with `refunded_gbp`, `refund_date_uk`, `refund_reason` columns
+and net/profit reduced by part refunds) and the same PDF report. Order details → **Receipt PDF** gives an invoice-style receipt
+for one order. Totals: part refunds reduce *Net received* and profit; fully refunded orders are left out of the money
+totals; the ledger (by date of each event) is the cash-basis record.
+
+PDFs show **PO-KE-MART-FUN LIMITED, company no. 16870472**. The registered address and VAT status are *not* invented:
+they print as `[REGISTERED ADDRESS — to confirm]` / `[VAT STATUS / NUMBER — to confirm]` until you set
+`COMPANY_ADDRESS` and `VAT_NUMBER` on Render (the receipt is not a VAT invoice until VAT is confirmed).
+
 ## Info pages, footer and placeholders
 
 - `/contact`, `/faq`, `/privacy`, `/terms` (also with `.html`), `/robots.txt` and `/sitemap.xml`.
@@ -119,7 +160,7 @@ success page. With it, Stripe tells the shop directly that the payment went thro
 1. In the [Stripe Dashboard](https://dashboard.stripe.com/webhooks) open **Developers → Webhooks**
    and click **Add endpoint**.
 2. Endpoint URL: `https://tcg-shop-1.onrender.com/api/stripe/webhook`
-3. Events to send: `checkout.session.completed` and `checkout.session.async_payment_succeeded`.
+3. Events to send: `checkout.session.completed`, `checkout.session.async_payment_succeeded` and `charge.refunded` (the last one lets the shop record refunds you make in the Stripe dashboard).
 4. Save, then click **Reveal** under *Signing secret* and copy the value (starts with `whsec_`).
 5. On Render, open `tcg-shop-1` → **Environment** and add `STRIPE_WEBHOOK_SECRET` with that value.
    Save (Render restarts the shop).
