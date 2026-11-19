@@ -37,6 +37,7 @@ const settingsStore = require('./settings-store');
 const reviews = require('./reviews');
 const securityStore = require('./security-store');
 const royalmail = require('./royalmail');
+const emails = require('./emails');
 const PENDING_STRIPE = new Map(); // stripe session id -> { items, email, userId, done }
 
 function stockError(res, problems, products, cart) {
@@ -101,6 +102,8 @@ async function saveOrder(order) {
   // eBay/Vinted-style postage: paid, non-demo orders go to Royal Mail Click & Drop in the background
   // (never delays or breaks the checkout; failures are retried and shown in admin).
   royalmail.onOrderPaid(r.order);
+  // Order confirmation email (Gmail): background, once per order, skipped for demo orders; never throws.
+  emails.onOrderPaid(r.order);
   return r.order;
 }
 
@@ -570,6 +573,7 @@ if (require.main === module) {
         : `Payment mode: stripe=${mode.stripe} paypal=${mode.paypal}`
     );
     console.log(process.env.ADMIN_PASSWORD ? 'Admin page: /admin' : 'Admin page disabled (set ADMIN_PASSWORD)');
+    emails.logStatus();
     const ost = ordersStore.status();
     console.log(ost.mode === 'github' ? `Orders: private repo ${ost.repo}${ost.warning ? ' — WARNING: ' + ost.warning : ''}` : 'WARNING: ' + ost.warning);
     console.log(royalmail.configured() ? `Royal Mail Click & Drop: connected (service ${royalmail.serviceCode()})` : 'Royal Mail Click & Drop: not connected (set ROYALMAIL_API_KEY)');

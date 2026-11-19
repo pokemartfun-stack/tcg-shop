@@ -12,6 +12,7 @@ const photoOrder = require('./photo-order');
 const ordersStore = require('./orders-store');
 const sales = require('./sales');
 const royalmail = require('./royalmail');
+const emails = require('./emails');
 const packingSlip = require('./packing-slip');
 const { parseExplicitCategory } = require('../public/js/categories');
 const security = require('./security-store');
@@ -315,7 +316,7 @@ router.get('/orders', (req, res) => {
     .filter((x) => o.includeDemo || !x.demo)
     .sort((a, b) => Date.parse(b.createdAt || 0) - Date.parse(a.createdAt || 0))
     .map((x) => ({ ...x, figures: sales.orderFigures(x, o.fees), uk: sales.ukParts(x.createdAt), ...royalmail.trackerInfo(x) }));
-  res.json({ from: o.from, to: o.to, all: everything, orders: list, storage: ordersStore.status(), royalmail: royalmail.status() });
+  res.json({ from: o.from, to: o.to, all: everything, orders: list, storage: ordersStore.status(), royalmail: royalmail.status(), emails: emails.status() });
 });
 
 // Printable packing slip(s): /orders/<id>/packing-slip?size=a4|a6, or /packing-slips?ids=a,b (no ids = all to post)
@@ -406,7 +407,22 @@ router.patch('/orders/:id', async (req, res) => {
     ...(events.length ? { history: [...(now.history || []), ...events.map((e) => royalmail.historyEntry(e.event, e.note))] } : {}),
   }));
   if (r.error) return res.status(400).json({ error: r.error });
+  // Marked as posted just now (with a tracking number): email the buyer once, in the background.
+  if (cur.status !== 'posted' && r.order.status === 'posted') emails.onOrderShipped(r.order);
   res.json({ order: r.order, github: r.github, githubError: r.githubError, storage: ordersStore.status() });
+});
+
+// Resend a customer email (admin pressed the button). { kind: 'confirmation' | 'shipped' }
+router.post('/orders/:id/resend-email', async (req, res) => {
+  const o = ordersStore.find(req.params.id);
+  if (!o) return res.status(404).json({ error: 'Order not found' });
+  const kind = String((req.body && req.body.kind) || 'confirmation');
+  if (!Object.prototype.hasOwnProperty.call(emails.KINDS, kind)) return res.status(400).json({ error: 'kind must be confirmation or shipped' });
+  if (!emails.enabled()) return res.status(400).json({ error: 'Order emails are off — set GMAIL_USER and GMAIL_APP_PASSWORD on Render (see README).' });
+  const r = await emails.send(kind, o.id, { force: true });
+  if (r.error) return res.status(502).json({ error: `Could not send the email: ${r.error}` });
+  if (!r.sent) return res.status(400).json({ error: `Not sent: ${r.skipped}` });
+  res.json({ sent: true, at: r.at, order: ordersStore.find(o.id) });
 });
 
 router.post('/orders/retry-sync', async (_req, res) => {

@@ -368,6 +368,7 @@ async function syncTracking(ids) {
       const pkg = r.packages && r.packages[0] && r.packages[0].trackingNumber;
       const tracking = r.trackingNumber && !/_CON$/.test(r.trackingNumber) ? r.trackingNumber : pkg || null;
       const before = JSON.stringify(o);
+      const wasPaid = o.status === 'paid';
       await ordersStore.update(o.id, (cur) => {
         const rm = { ...(cur.royalmail || {}), lastSyncAt: new Date().toISOString() };
         const history = [...(cur.history || [])];
@@ -388,6 +389,7 @@ async function syncTracking(ids) {
       });
       // only count real changes (lastSyncAt alone doesn't count)
       const after = ordersStore.find(o.id);
+      if (wasPaid && after && after.status === 'posted') require('./emails').onOrderShipped(after); // buyer's "posted" email (once, background)
       const strip = (x) => JSON.stringify({ ...x, updatedAt: 0, royalmail: { ...x.royalmail, lastSyncAt: 0 } });
       if (strip(after) !== strip(JSON.parse(before))) updated++;
     }
