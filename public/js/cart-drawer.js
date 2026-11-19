@@ -6,7 +6,7 @@ async function render(){
  const c=await api('/api/cart');
  dialog.querySelector('.drawer-items').innerHTML=c.items.map(i=>`<div class="purchase-item"><img src="${esc(i.image)}" alt=""><div><strong>${esc(i.title)}</strong><div class="drawer-quantity"><button data-qty="${i.qty-1}" data-id="${esc(i.productId)}" aria-label="Decrease quantity">−</button><span>${i.qty}</span><button data-qty="${i.qty+1}" data-id="${esc(i.productId)}" aria-label="Increase quantity">+</button><button class="remove" data-qty="0" data-id="${esc(i.productId)}">Remove</button></div></div><strong>${formatGbp(i.line_total)}</strong></div>`).join('')||'<p>Your cart is empty. Your next favourite card is waiting.</p>';
  dialog.querySelector('[data-subtotal]').textContent=formatGbp(c.subtotal);
- dialog.querySelector('[data-checkout]').hidden=!c.items.length;
+ dialog.querySelector('[data-checkout]').hidden=!c.items.length;dialog.querySelector('.drawer-footer').hidden=!c.items.length;
 }
 async function open(trigger=document.activeElement){returnFocus=trigger;try {await render();if(!dialog.open)dialog.showModal();}catch(e){dialog.querySelector('[role=alert]').textContent=e.message;}}
 document.addEventListener('DOMContentLoaded',()=>{
