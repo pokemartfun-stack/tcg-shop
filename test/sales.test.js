@@ -30,7 +30,7 @@ describe('estimated payment fees', () => {
 describe('order figures', () => {
   it('net = takings - fee; profit = net - cost of goods - postage paid', () => {
     const f = sales.orderFigures(order({ items: [line('a', 10, 2, 4), line('b', 5, 1, 1.5)], subtotal: 25, total: 27.9 }));
-    assert.deepEqual(f, { items: 3, sales: 25, postage: 2.9, fee: 0.62, net: 27.28, cost: 9.5, postagePaid: 2.9, profit: 14.88, missingCost: 0 });
+    assert.deepEqual(f, { items: 3, sales: 25, postage: 2.9, fee: 0.62, refunded: 0, net: 27.28, cost: 9.5, postagePaid: 2.9, profit: 14.88, missingCost: 0 });
   });
   it('uses the real postage paid when entered, and flags lines without a cost price', () => {
     const f = sales.orderFigures(order({ items: [line('a', 10, 1, null)], subtotal: 10, total: 12.9, postage_paid: 2.7 }));

@@ -285,7 +285,8 @@ describe('reviews on the pages', () => {
     const html = (await call('GET', '/admin')).text;
     assert.match(html, /id="reviews-section"/);
     assert.match(html, /type="checkbox" id="rv-enabled"/);
-    assert.match(html, /href="#reviews-section">Reviews</);
+    assert.match(html, /<section id="reviews-section" data-tab="reviews"/); // now a tab (see admin-tabs.js) instead of a jump link
+    assert.match(html, /<script src="\/js\/admin-tabs\.js"><\/script>/);
     assert.match(html, /<script src="\/js\/admin-reviews\.js"><\/script>/);
   });
 });
