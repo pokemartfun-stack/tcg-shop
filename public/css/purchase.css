@@ -26,3 +26,7 @@
 .cart-table td .btn{padding:.45rem .8rem;font-size:.85rem;}
 .cart-item img{flex-shrink:0;}
 }
+/* /success with no order: centred "No order found" card. */
+.no-order{max-width:520px;margin:0 auto;text-align:center;}
+.no-order .btn{display:block;width:100%;text-align:center;}
+.no-order-back{margin:14px 0 0!important;}

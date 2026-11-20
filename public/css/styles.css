@@ -481,6 +481,7 @@ html.has-page-bg .site-footer { border-top-color: rgba(255, 255, 255, 0.12); }
   aspect-ratio: 4 / 1; /* reserved space until the real ratio is known (set inline by server/JS) */
   /* deliberately no filter / opacity / overlay: shown exactly as uploaded */
 }
+.hero-picture { display: block; }
 .hero-img[hidden] { display: none; }
 /* Pattern-only banner (no image) without text: a slimmer band */
 .hero-banner:not(.has-image):not(.show-text) { min-height: clamp(90px, 14vw, 180px); }
@@ -882,3 +883,12 @@ html.has-page-bg .site-footer { background: rgba(12, 15, 26, 0.86); backdrop-fil
 .contact-card p { margin: 0; }
 /* Details the owner still has to confirm: deliberately easy to spot */
 .todo { background: rgba(255, 203, 5, 0.14); color: #ffe27a; border: 1px dashed rgba(255, 203, 5, 0.7); border-radius: 4px; padding: 0 0.3em; font-weight: 600; white-space: normal; }
+
+/* Home intro: readable navy panel with a yellow edge so the text doesn't sit straight on the busy Pikachu background. */
+.hero > p.hero-intro {
+  display: inline-block; max-width: 42rem; padding: 0.85rem 1.1rem;
+  background: rgba(14, 22, 52, 0.82); border: 1px solid rgba(255, 203, 5, 0.35); border-left: 4px solid var(--poke-yellow);
+  border-radius: 12px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  color: #f2f4f8; text-shadow: none; line-height: 1.5;
+}
+html.has-page-bg .hero > p.hero-intro { color: #f2f4f8; text-shadow: none; }
