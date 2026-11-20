@@ -88,8 +88,14 @@ function render(html, s, ratio, opts = {}) {
   const heroClasses = ['hero-banner'];
   if (okUrl(s.banner_image)) {
     heroClasses.push('has-image');
-    out = out.replace('<img class="hero-img" id="hero-img" alt="" hidden />',
-      `<img class="hero-img" id="hero-img" alt="" src="${esc(s.banner_image)}" fetchpriority="high"${ratio ? ` style="aspect-ratio: ${ratio}"` : ''} />`);
+    const alt = esc(`${s.shop_name || 'Po-ke Mart Fun'} — Pokémon trading cards, packs and collectibles`);
+    const img = `<img class="hero-img" id="hero-img" alt="${alt}" src="${esc(s.banner_image)}" fetchpriority="high"${ratio ? ` style="aspect-ratio: ${ratio}"` : ''} />`;
+    // Our own animated banner GIF also has a much smaller animated WebP twin (public/images/banner.webp):
+    // browsers that support it download that; the GIF stays as the fallback <img>.
+    const gif = /^\/images\/banner\.gif(\?v=\d+)?$/.exec(s.banner_image);
+    const webp = gif && opts.bannerWebp !== false && fs.existsSync(images.bannerFile('webp'));
+    out = out.replace('<img class="hero-img" id="hero-img" alt="Po-ke Mart Fun banner" hidden />',
+      webp ? `<picture class="hero-picture"><source type="image/webp" srcset="/images/banner.webp${gif[1] || ''}">${img}</picture>` : img);
   }
   const email = opts.contactEmail === undefined ? contactEmail() : opts.contactEmail;
   if (email) {

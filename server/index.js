@@ -276,6 +276,15 @@ app.get('/favicon.png', (req, res, next) => require('./images').serveFavicon(req
 // Animated GIF uploads of the same two images (kept as GIF so they stay animated).
 app.get('/images/banner.gif', (req, res, next) => require('./images').serveBannerGif(req, res, next));
 app.get('/images/background.gif', (req, res, next) => require('./images').serveBackgroundGif(req, res, next));
+// /cart is not a page of its own: send it to /cart.html.
+app.get('/cart', (_req, res) => res.redirect(301, '/cart.html'));
+// /checkout with nothing in the (server-held) cart: back to the cart page instead of a £0.00 form.
+app.get(['/checkout', '/checkout.html'], (req, res, next) => {
+  const tok = (req.headers['x-session-token'] && String(req.headers['x-session-token'])) || (req.cookies && req.cookies.session) || null;
+  const data = tok ? SESSIONS.get(tok) : null;
+  if (data && data.cart && Array.isArray(data.cart.items) && data.cart.items.length) return next();
+  res.redirect(302, '/cart.html');
+});
 // Customer pages: HTML with the current banner / background / logo already filled in.
 app.use(require('./page-render').handler);
 app.use(express.static(path.join(__dirname, '..', 'public')));

@@ -179,6 +179,10 @@ function siteImage(name, envVar, label, resize, quality, gifMaxWidth, opts = {})
     fs.writeFileSync(file, data);
     fresh[ext] = true;
     const pushed = await sync.safePush(repoPath(ext), data, `Admin: ${label}${ext === 'gif' ? ' (GIF)' : ''}`, true);
+    if (ext === 'gif' && opts.afterGif) {
+      // keep the derived animated WebP twin in step with the new GIF (best-effort; the GIF still works alone)
+      try { await opts.afterGif(data, { localFile, repoPath }); } catch (err) { console.error(`${label}: could not build WebP twin:`, err.message); }
+    }
     return { url: `${urlDir}/${name}.${ext}?v=${Date.now()}`, path: `${urlDir}/${name}.${ext}`, data, ext, bytes: data.length, ...extra, ...pushed };
   }
 
@@ -217,8 +221,18 @@ function siteImage(name, envVar, label, resize, quality, gifMaxWidth, opts = {})
   return { save, saveRaw, serve: serveExt(baseExt), serveGif: serveExt('gif'), file: localFile, repoPath };
 }
 
+// Animated banner GIFs also get a much smaller animated WebP twin (banner.webp), used by
+// server/page-render.js through <picture>; the GIF stays as the fallback.
+async function bannerWebpTwin(gifData, { localFile, repoPath }) {
+  const webp = await sharp(gifData, { animated: true })
+    .webp({ quality: 40, effort: 6, loop: 0, mixed: true, smartSubsample: true }).toBuffer();
+  const file = localFile('webp');
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, webp);
+  await sync.safePush(repoPath('webp'), webp, 'Admin: shop banner image (WebP)', true);
+}
 const banner = siteImage('banner', 'BANNER_FILE', 'shop banner image',
-  { width: 2000, withoutEnlargement: true }, 82, 2000);
+  { width: 2000, withoutEnlargement: true }, 82, 2000, { afterGif: bannerWebpTwin });
 // Page background: whole image kept (no crop), max 2400px side; CSS scales it to cover.
 const background = siteImage('background', 'BACKGROUND_FILE', 'page background image',
   { width: 2400, height: 2400, fit: 'inside', withoutEnlargement: true }, 86, 2400);
