@@ -26,7 +26,9 @@ async function init(){
  if(!token && session){const r=await api('/api/checkout/stripe/session/'+encodeURIComponent(session));token=r.token;if(!token)throw Error('Payment is still processing. Please check back shortly.');}
  if(!token)throw Error('Use your private confirmation link, or find your order on the tracking page.');
  const r=await api('/api/customer-orders/confirmation',{method:'POST',body:{token}});render(r.order,r.map,true);
- }catch(err){$('order-view').innerHTML=`<section class="order-card"><h1>Order confirmation</h1><p>${esc(err.message)}</p><a class="btn purchase-pay" href="/track">Track your order</a></section>`;}
+ }catch(err){
+ if(/still processing/i.test(err.message||'')){$('order-view').innerHTML=`<section class="order-card"><h1>Order confirmation</h1><p>${esc(err.message)}</p><a class="btn purchase-pay" href="/track">Track your order</a></section>`;return;}
+ $('order-view').innerHTML=`<section class="order-card no-order"><h1>No order found</h1><p>We couldn’t find an order for this link. If you’ve just paid, check your confirmation email, or look up your order with your order number.</p><a class="btn purchase-pay" href="/track">Track an order</a><p class="no-order-back"><a href="/">← Back to shop</a></p></section>`;}
 }
 document.addEventListener('DOMContentLoaded',init);
 })();

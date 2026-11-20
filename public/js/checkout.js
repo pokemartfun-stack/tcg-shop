@@ -15,6 +15,7 @@ async function renderSummary() {
  $('shipping-band').textContent = q.band ? q.band + ' · Selected for your items' : 'Add items to calculate postage';
  $('btn-pay').disabled = !cart.items.length || (!config.mode.demo && !config.mode.stripe);
  if(cart.problems?.length) { $('checkout-error').textContent=cart.problems.map(p=>p.error).join('; '); $('btn-pay').disabled=true; }
+ return cart;
 }
 function readDetails() {
  const form=$('ship-form');
@@ -32,7 +33,8 @@ async function init() {
  config=await api('/api/config');
  if(config.user) { $('email').value=config.user.email; $('guest-hint').textContent='Signed in as '+config.user.email; }
  if(config.mode.demo) { $('mode-banner').hidden=false; $('mode-banner').textContent='Demo checkout — no money will be taken.'; $('btn-pay').textContent='Complete demo order'; }
- await renderSummary();
+ const loaded=await renderSummary();
+ if(!loaded.items.length){ location.replace('/cart.html'); return; } // nothing to pay for: send them to the cart page
  $('summary-toggle').onclick=()=>{const open=$('summary-toggle').getAttribute('aria-expanded')!=='true';$('summary-toggle').setAttribute('aria-expanded',open);$('summary-content').classList.toggle('expanded',open);$('summary-chevron').textContent=open?'⌃':'⌄';};
  $('ship-postcode').oninput=()=> $('ship-postcode').setCustomValidity('');
  $('ship-form').onsubmit=async e=>{
