@@ -46,7 +46,9 @@ test('demo checkout returns a private confirmation link and stores optional cons
  assert.equal(order.items[0].cost_gbp,undefined);
 });
 test('purchase templates contain required mobile, form and accessible drawer hooks',async()=>{
- const html=await(await fetch(base+'/checkout')).text();
+ const cart=await fetch(base+'/api/cart');const cookie=cart.headers.get('set-cookie').split(';')[0];
+ await fetch(base+'/api/cart/add',{method:'POST',headers:{'Content-Type':'application/json',Cookie:cookie},body:JSON.stringify({productId:'preview',qty:1})});
+ const html=await(await fetch(base+'/checkout',{headers:{Cookie:cookie}})).text();
  for(const marker of ['summary-toggle','aria-expanded="false"','ship-first','ship-last','shipping-service','btn-pay','news'])assert.ok(html.includes(marker),marker);
  const css=fs.readFileSync(path.join(__dirname,'../public/css/purchase.css'),'utf8');assert.match(css,/#summary-content\.expanded/);assert.match(css,/max-width:760px/);
  const drawer=fs.readFileSync(path.join(__dirname,'../public/js/cart-drawer.js'),'utf8');assert.match(drawer,/showModal/);assert.match(drawer,/aria-label="Close cart"/);assert.match(drawer,/returnFocus\.focus\(\)/);
@@ -55,3 +57,17 @@ test('confirmation and tracking share a per-IP rate limit, ignoring spoofed head
  customer._reset();for(let i=0;i<20;i++)assert.equal((await post('track',{})).status,404);const r=await post('confirmation',{token});assert.equal(r.status,429);assert.ok(Number(r.headers.get('retry-after'))>0);
 });
 test('customer HTML routes are served',async()=>{for(const p of ['/checkout','/track','/thank-you']){const r=await fetch(base+p);assert.equal(r.status,200);assert.match(r.headers.get('content-type'),/text\/html/);}});
+
+test('/cart redirects to /cart.html; /checkout with an empty cart redirects to the cart page, with items it is the checkout page',async()=>{
+ const c=await fetch(base+'/cart',{redirect:'manual'});assert.equal(c.status,301);assert.equal(c.headers.get('location'),'/cart.html');
+ for(const route of ['/checkout','/checkout.html']){
+  const none=await fetch(base+route,{redirect:'manual'});assert.equal(none.status,302,route);assert.equal(none.headers.get('location'),'/cart.html');
+  const cart=await fetch(base+'/api/cart');const cookie=cart.headers.get('set-cookie').split(';')[0];
+  const empty=await fetch(base+route,{redirect:'manual',headers:{Cookie:cookie}});assert.equal(empty.status,302,route+' empty cart');
+  await fetch(base+'/api/cart/add',{method:'POST',headers:{'Content-Type':'application/json',Cookie:cookie},body:JSON.stringify({productId:'preview',qty:1})});
+  const full=await fetch(base+route,{redirect:'manual',headers:{Cookie:cookie}});assert.equal(full.status,200,route+' with item');assert.match(await full.text(),/id="btn-pay"/);
+ }
+});
+test('checkout.js sends an empty cart to /cart.html once it has loaded',()=>{
+ const js=fs.readFileSync(path.join(__dirname,'../public/js/checkout.js'),'utf8');assert.match(js,/location\.replace\('\/cart\.html'\)/);
+});

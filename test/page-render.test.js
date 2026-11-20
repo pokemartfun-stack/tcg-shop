@@ -67,7 +67,7 @@ describe('server-rendered banner + background (settings with ?v= query strings)'
   it('render(): no image -> img stays hidden; show_banner_text -> show-text; HTML is escaped', () => {
     const tpl = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
     const none = render(tpl, { ...LIVE, banner_image: '', background_image: '', show_banner_text: true, shop_name: '<b>x</b>' }, null);
-    assert.match(none, /<img class="hero-img" id="hero-img" alt="" hidden \/>/);
+    assert.match(none, /<img class="hero-img" id="hero-img" alt="Po-ke Mart Fun banner" hidden \/>/);
     assert.match(none, /<section class="hero-banner show-text" id="hero-banner"/);
     assert.doesNotMatch(none, /has-page-bg/);
     assert.match(none, /&lt;b&gt;x&lt;\/b&gt;/);
@@ -92,5 +92,46 @@ describe('server-rendered banner + background (settings with ?v= query strings)'
     await new Promise((r) => setTimeout(r, 20));
     assert.ok(classes.has('has-page-bg'));
     assert.equal(props['--page-bg-image'], 'url("/images/background.jpg?v=1792615705908")');
+  });
+});
+
+describe('banner alt text and WebP twin', () => {
+  const tpl = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  it('banner <img> has meaningful alt text; the logo keeps alt=""', () => {
+    const out = render(tpl, LIVE, '1200 / 300', { bannerWebp: false });
+    assert.match(out, /<img class="hero-img" id="hero-img" alt="Po-ke Mart Fun — Pokémon trading cards, packs and collectibles"/);
+    assert.match(out, /<img class="brand-logo"[^>]* alt=""/);
+    assert.doesNotMatch(out, /<picture/);
+  });
+  it('our banner.gif is wrapped in <picture> with an animated WebP source when banner.webp exists', () => {
+    const real = path.join(__dirname, '..', 'public', 'images', 'banner.gif');
+    const prev = process.env.BANNER_FILE;
+    process.env.BANNER_FILE = real;
+    try {
+      const out = render(tpl, LIVE, '1200 / 300');
+      assert.match(out, /<picture class="hero-picture"><source type="image\/webp" srcset="\/images\/banner\.webp\?v=1792615696500"><img class="hero-img" id="hero-img"/);
+      assert.match(out, /src="\/images\/banner\.gif\?v=1792615696500"/);
+      const other = render(tpl, { ...LIVE, banner_image: 'https://example.com/b.gif' }, null);
+      assert.doesNotMatch(other, /<picture/);
+    } finally { if (prev === undefined) delete process.env.BANNER_FILE; else process.env.BANNER_FILE = prev; }
+  });
+});
+
+describe('banner WebP twin is rebuilt when a banner GIF is saved', () => {
+  it('saveBanner(gif) writes banner.webp next to banner.gif', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tcg-twin-'));
+    const prev = process.env.BANNER_FILE;
+    process.env.BANNER_FILE = path.join(dir, 'banner.jpg');
+    try {
+      const images = require('../server/images');
+      const saved = await images.saveBanner(makeAnimatedGif(64, 16, [1, 2, 3]), 'new.gif');
+      assert.equal(saved.ext, 'gif');
+      const webp = path.join(dir, 'banner.webp');
+      assert.ok(fs.existsSync(webp), 'banner.webp written');
+      assert.equal(fs.readFileSync(webp).subarray(8, 12).toString(), 'WEBP');
+    } finally {
+      if (prev === undefined) delete process.env.BANNER_FILE; else process.env.BANNER_FILE = prev;
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
