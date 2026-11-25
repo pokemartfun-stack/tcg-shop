@@ -67,6 +67,7 @@ a:hover { color: var(--accent-hover); }
   color: #f5dfa0; font-size: 0.92rem;
 }
 .banner.ok { background: rgba(62, 207, 142, 0.12); border-color: rgba(62, 207, 142, 0.35); color: #9eebc7; }
+.banner.test { background: rgba(240, 193, 75, 0.16); border: 1px solid rgba(255, 203, 5, 0.55); color: #ffe27a; }
 
 .grid {
   display: grid;
@@ -276,7 +277,7 @@ a:hover { color: var(--accent-hover); }
   background: rgba(0, 0, 0, 0.65); color: #fff; font-size: 0.78rem; font-weight: 700;
 }
 .gallery-backdrop {
-  position: fixed; inset: 0; z-index: 90; background: rgba(0, 0, 0, 0.82);
+  position: fixed; inset: 0; z-index: 2000; background: rgb(7, 11, 23);
   display: none; align-items: center; justify-content: center; padding: 1rem;
 }
 .gallery-backdrop.open { display: flex; }
@@ -366,7 +367,10 @@ a:hover { color: var(--accent-hover); }
   .card-body { padding: 0.6rem 0.65rem 0.75rem; }
   .card-body h2 { font-size: 0.88rem; }
   .price { font-size: 1.1rem; }
-  .gallery-main { height: 70vh; }
+  .gallery { max-height: 100dvh; overflow: auto; }
+  .gallery-main { height: min(58vh, calc(100dvh - 11rem)); }
+  /* Keep the close control inside the scroll box so overflow:auto cannot clip it. */
+  .gallery-close { top: 0.5rem; right: 0.5rem; }
   .gallery-nav { width: 2.3rem; height: 2.3rem; font-size: 1.2rem; }
 }
 
@@ -405,6 +409,7 @@ html.has-page-bg .site-footer { color: #c3cad8; text-shadow: 0 1px 3px rgba(0, 0
 html.has-page-bg .hero p { color: #dfe4ee; text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9); }
 html.has-page-bg .banner { background-color: rgba(38, 33, 18, 0.92); }
 html.has-page-bg .banner.ok { background-color: rgba(16, 40, 31, 0.92); }
+html.has-page-bg .banner.test { background-color: rgba(38, 33, 18, 0.94); border-color: rgba(255, 203, 5, 0.5); color: #ffe27a; }
 html.has-page-bg .site-footer { border-top-color: rgba(255, 255, 255, 0.12); }
 @media (max-width: 640px) {
   html.has-page-bg body::before { background-position: center 30%; }
