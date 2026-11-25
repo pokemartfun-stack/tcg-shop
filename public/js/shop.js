@@ -13,19 +13,30 @@ async function showModeBanner() {
   const cfg = await api('/api/config');
   const banner = $('mode-banner');
   if (!banner) return;
+  banner.hidden = false;
+  banner.classList.remove('ok', 'test');
   if (cfg.mode.demo) {
-    banner.hidden = false;
-    banner.classList.remove('ok');
     banner.textContent =
       'Demo payment mode — Stripe/PayPal keys not set. You can still browse, cart, and complete a fake order at checkout.';
-  } else {
-    banner.hidden = false;
+    return;
+  }
+  // Test Stripe keys must never use the green "Live" banner, even if PayPal is also set.
+  if (cfg.mode.stripe && cfg.mode.stripeMode !== 'live') {
+    banner.classList.add('test');
+    banner.textContent = 'Test mode: Stripe test cards only — no real money is taken.';
+    return;
+  }
+  if (cfg.mode.stripe && cfg.mode.stripeMode === 'live') {
     banner.classList.add('ok');
-    const parts = [];
-    if (cfg.mode.stripe) parts.push('Stripe (card / Apple Pay)');
+    const parts = ['Stripe (card / Apple Pay)'];
     if (cfg.mode.paypal) parts.push('PayPal');
     banner.textContent = 'Live payment methods enabled: ' + parts.join(', ');
+    return;
   }
+  const parts = [];
+  if (cfg.mode.paypal) parts.push('PayPal');
+  banner.textContent = parts.length ? 'Payment methods enabled: ' + parts.join(', ') : '';
+  if (!parts.length) banner.hidden = true;
 }
 
 // Banner: the uploaded image is shown as an <img> at its natural aspect ratio (whole picture,
