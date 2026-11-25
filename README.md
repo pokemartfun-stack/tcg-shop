@@ -110,7 +110,7 @@ and net/profit reduced by part refunds) and the same PDF report. Order details �
 for one order. Totals: part refunds reduce *Net received* and profit; fully refunded orders are left out of the money
 totals; the ledger (by date of each event) is the cash-basis record.
 
-PDFs show **PO-KE-MART-FUN LIMITED, company no. 16870472**. The registered address and VAT status are *not* invented:
+PDFs show **PO-KE-MART-FUN LIMITED**. The registered address and VAT status are *not* invented:
 they print as `[REGISTERED ADDRESS — to confirm]` / `[VAT STATUS / NUMBER — to confirm]` until you set
 `COMPANY_ADDRESS` and `VAT_NUMBER` on Render (the receipt is not a VAT invoice until VAT is confirmed).
 
