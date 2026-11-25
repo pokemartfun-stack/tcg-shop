@@ -3,6 +3,16 @@
  */
 const crypto = require('crypto');
 
+function stripeModeFromKeys(publishable, secret) {
+  const pk = String(publishable || '');
+  const sk = String(secret || '');
+  if (!pk || !sk) return null;
+  // A test key on either side means test mode. Only a pk_live_ key may be called live.
+  if (pk.startsWith('pk_test_') || sk.startsWith('sk_test_')) return 'test';
+  if (pk.startsWith('pk_live_')) return 'live';
+  return 'test';
+}
+
 function paymentMode(env) {
   const stripeOk = Boolean(env.STRIPE_SECRET_KEY && env.STRIPE_PUBLISHABLE_KEY);
   const paypalOk = Boolean(env.PAYPAL_CLIENT_ID);
@@ -10,6 +20,7 @@ function paymentMode(env) {
     demo: !stripeOk && !paypalOk,
     stripe: stripeOk,
     paypal: paypalOk,
+    stripeMode: stripeOk ? stripeModeFromKeys(env.STRIPE_PUBLISHABLE_KEY, env.STRIPE_SECRET_KEY) : null,
     stripePublishableKey: env.STRIPE_PUBLISHABLE_KEY || '',
     paypalClientId: env.PAYPAL_CLIENT_ID || '',
   };

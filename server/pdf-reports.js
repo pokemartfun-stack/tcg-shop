@@ -9,14 +9,13 @@ const ledger = require('./ledger');
 const { refundList } = require('./accounts-export');
 
 const COMPANY_NAME = 'PO-KE-MART-FUN LIMITED';
-const COMPANY_NUMBER = '16870472';
 const TRADING_AS = 'Po-ke Mart Fun';
 const INK = '#1d2230'; const MUTED = '#667085'; const RED = '#e3350d'; const LINE = '#d9dce5'; const HEAD = '#eef1f8';
 
 function company(env = process.env) {
   const oneLine = (v) => String(v || '').replace(/\s+/g, ' ').trim();
   return {
-    name: COMPANY_NAME, number: COMPANY_NUMBER, tradingAs: TRADING_AS,
+    name: COMPANY_NAME, tradingAs: TRADING_AS,
     address: oneLine(env.COMPANY_ADDRESS) || '[REGISTERED ADDRESS — to confirm]',
     vat: oneLine(env.VAT_NUMBER) || '[VAT STATUS / NUMBER — to confirm]',
     email: oneLine(env.CONTACT_EMAIL) || '[CONTACT EMAIL — to confirm]',
@@ -42,7 +41,7 @@ function footers(doc, co, label) {
     doc.switchToPage(range.start + i);
     const y = doc.page.height - 30;
     const keep = doc.page.margins.bottom; doc.page.margins.bottom = 0; // writing in the bottom margin must not add a page
-    doc.font('Helvetica').fontSize(7.5).fillColor(MUTED).text(safe(`${co.name} · Company no. ${co.number} · ${label}`), 40, y, { width: doc.page.width - 160, lineBreak: false });
+    doc.font('Helvetica').fontSize(7.5).fillColor(MUTED).text(safe(`${co.name} · ${label}`), 40, y, { width: doc.page.width - 160, lineBreak: false });
     doc.text(`Page ${i + 1} of ${range.count}`, doc.page.width - 120, y, { width: 80, align: 'right', lineBreak: false });
     doc.page.margins.bottom = keep;
   }
@@ -86,7 +85,7 @@ function letterhead(doc, co, title, subtitle) {
   doc.font('Helvetica-Bold').fontSize(18).fillColor(INK).text(safe(title), 40, 28);
   if (subtitle) doc.font('Helvetica').fontSize(10).fillColor(MUTED).text(safe(subtitle), 40);
   doc.moveDown(0.4).font('Helvetica').fontSize(8.5).fillColor(MUTED)
-    .text(safe(`${co.name} (trading as ${co.tradingAs}) · Company no. ${co.number}`), 40)
+    .text(safe(`${co.name} (trading as ${co.tradingAs})`), 40)
     .text(safe(`Registered office: ${co.address}`), 40)
     .text(safe(`VAT: ${co.vat}`), 40);
 }
@@ -177,4 +176,4 @@ async function receiptPdf(o, env = process.env) {
   return done;
 }
 
-module.exports = { reportPdf, receiptPdf, company, COMPANY_NAME, COMPANY_NUMBER };
+module.exports = { reportPdf, receiptPdf, company, COMPANY_NAME };
