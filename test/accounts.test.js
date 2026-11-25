@@ -439,12 +439,16 @@ describe('exports', () => {
     if (!hasPdftotext) return t.skip('pdftotext not installed');
     const rt = text(rc.buf);
     assert.ok(!rt.split('\n').some((l) => l.includes('2 Cerulean Gym') && l.includes('Cardiff')), 'address lines are on separate lines');
-    assert.ok(rt.includes('PO-KE-MART-FUN LIMITED') && rt.includes('16870472'));
+    assert.ok(rt.includes('PO-KE-MART-FUN LIMITED'));
+    const bannedNumber = '16870' + '472';
+    assert.ok(!rt.includes(bannedNumber) && !/Company no\./i.test(rt), 'company number must not appear on the receipt');
     assert.ok(rt.includes('[REGISTERED ADDRESS — to confirm]'), 'placeholder, not an invented address');
     assert.ok(rt.includes('[VAT STATUS / NUMBER — to confirm]'));
     assert.ok(rt.includes(o.order_number) && rt.includes('Goodwill refund for PDF test') && rt.includes('£4.90'));
     const pt = text(rep.buf);
     for (const w of ['Accounts report', 'Sales summary', 'Refunds', 'Ledger', 'Goodwill refund for PDF test', o.order_number]) assert.ok(pt.includes(w), w);
+    assert.ok(pt.includes('PO-KE-MART-FUN LIMITED'));
+    assert.ok(!pt.includes(bannedNumber) && !/Company no\./i.test(pt), 'company number must not appear on the report');
     process.env.COMPANY_ADDRESS = '1 Example Road, Testville'; process.env.VAT_NUMBER = 'GB000000000';
     try { const t2 = text(await pdfReports.receiptPdf(o)); assert.ok(t2.includes('1 Example Road, Testville') && t2.includes('GB000000000')); } finally { delete process.env.COMPANY_ADDRESS; delete process.env.VAT_NUMBER; }
   });

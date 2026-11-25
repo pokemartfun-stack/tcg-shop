@@ -48,7 +48,7 @@ describe('info pages', () => {
     const privacy = (await get('/privacy')).text;
     for (const html of [terms, privacy]) {
       assert.match(html, /PO-KE-MART-FUN LIMITED/);
-      assert.doesNotMatch(html, /16870472/);
+      assert.doesNotMatch(html, new RegExp('16870' + '472'));
       assert.match(html, /\[REGISTERED ADDRESS — to confirm\]/);
       assert.match(html, /\[CONTACT EMAIL — to confirm\]/);
       assert.match(html, /Last updated:/);
