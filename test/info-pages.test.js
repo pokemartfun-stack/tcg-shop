@@ -14,6 +14,8 @@ process.env.SETTINGS_FILE = path.join(tmpDir, 'settings.json');
 process.env.ORDERS_FILE = path.join(tmpDir, 'orders.json');
 delete process.env.GITHUB_TOKEN;
 delete process.env.CONTACT_EMAIL;
+delete process.env.COMPANY_ADDRESS;
+delete process.env.VAT_NUMBER;
 delete process.env.SHOW_PLACEHOLDER_LISTINGS;
 
 const app = require('../server/index');
@@ -43,27 +45,86 @@ describe('info pages', () => {
     });
   }
 
-  it('legal pages name the company and keep unknown details as visible placeholders', async () => {
-    const terms = (await get('/terms')).text;
-    const privacy = (await get('/privacy')).text;
-    for (const html of [terms, privacy]) {
+  it('legal pages name the company and do not show placeholders or the company number', async () => {
+    for (const name of ['contact', 'faq', 'privacy', 'terms']) {
+      const html = (await get('/' + name)).text;
       assert.match(html, /PO-KE-MART-FUN LIMITED/);
       assert.doesNotMatch(html, new RegExp('16870' + '472'));
-      assert.match(html, /\[REGISTERED ADDRESS — to confirm\]/);
-      assert.match(html, /\[CONTACT EMAIL — to confirm\]/);
-      assert.match(html, /Last updated:/);
+      assert.doesNotMatch(html, /to confirm/i);
+      assert.doesNotMatch(html, /class="todo"/);
+      assert.doesNotMatch(html, /\[REGISTERED ADDRESS/);
+      assert.doesNotMatch(html, /\[CONTACT EMAIL/);
+      assert.doesNotMatch(html, /Last updated:/);
+      assert.doesNotMatch(html, /Registered office:/);
+      assert.doesNotMatch(html, />VAT:/);
+      assert.doesNotMatch(html, /ICO registration/);
     }
-    assert.match(terms, /14 days/);
-    assert.match(terms, /Consumer Contracts Regulations 2013/);
+    const terms = (await get('/terms')).text;
+    const privacy = (await get('/privacy')).text;
+    const contact = (await get('/contact')).text;
+    const faq = (await get('/faq')).text;
+    assert.match(terms, /<h2>1\. Your order<\/h2>/);
+    assert.match(terms, /<h2>2\. Products and condition<\/h2>/);
+    assert.match(terms, /<h2>3\. Prices and payment<\/h2>/);
+    assert.match(terms, /<h2>4\. Delivery<\/h2>/);
+    assert.match(terms, /<h2>5\. Faulty or incorrect items<\/h2>/);
+    assert.match(terms, /<h2>6\. Events outside our control<\/h2>/);
+    assert.match(terms, /<h2>7\. Your data<\/h2>/);
+    assert.doesNotMatch(terms, /About us/);
+    assert.doesNotMatch(terms, /Your right to cancel/);
+    assert.doesNotMatch(terms, /id="cancellation"/);
+    assert.doesNotMatch(terms, /Model cancellation form/);
+    assert.doesNotMatch(terms, /Our responsibility to you/);
+    assert.doesNotMatch(terms, /Law and disputes/);
+    assert.doesNotMatch(terms, /Consumer Contracts Regulations 2013/);
+    assert.doesNotMatch(terms, /14 days/);
+    assert.doesNotMatch(contact, /terms#cancellation/);
+    assert.doesNotMatch(faq, /terms#cancellation/);
+    assert.match(privacy, /get in touch via our <a href="\/contact">Contact us<\/a> page/);
+    assert.match(contact, /Track order/);
+    assert.doesNotMatch(contact, /<strong>Email:<\/strong>/);
+    assert.match(faq, /Visit our <a href="\/contact">Contact us<\/a> page/);
+    assert.doesNotMatch(faq, /We aim to send orders within/);
     for (const processor of ['Stripe', 'Render', 'GitHub', 'Royal Mail']) assert.match(privacy, new RegExp(processor));
   });
 
-  it('CONTACT_EMAIL turns the email placeholders into a mailto link', () => {
-    const html = '<p>Email: <span class="todo" data-contact-email>[CONTACT EMAIL — to confirm]</span></p>';
-    assert.equal(render(html, {}, null, { contactEmail: '' }), html);
-    const out = render(html, {}, null, { contactEmail: 'help@example.com' });
+  it('CONTACT_EMAIL, COMPANY_ADDRESS and VAT_NUMBER fill in only when set', () => {
+    const html = [
+      '<div class="contact-card" data-if="contact-email" hidden><p>Email: <span data-contact-email></span></p></div>',
+      '<p data-unless="contact-email">Visit our <a href="/contact">Contact us</a> page.</p>',
+      '<p data-if="contact-email" hidden>Email us at <span data-contact-email></span>.</p>',
+      '<p>PO-KE-MART-FUN LIMITED.</p>',
+      '<p data-if="company-address" hidden>Registered office: <span data-company-address></span></p>',
+      '<p data-if="vat-number" hidden>VAT: <span data-vat-number></span></p>',
+    ].join('');
+    const unset = render(html, {}, null, { contactEmail: '', companyAddress: '', vatNumber: '' });
+    assert.match(unset, /Visit our <a href="\/contact">Contact us<\/a> page/);
+    assert.doesNotMatch(unset, /Email:/);
+    assert.doesNotMatch(unset, /Registered office:/);
+    assert.doesNotMatch(unset, /VAT:/);
+    assert.doesNotMatch(unset, /data-if=|data-unless=|hidden|to confirm|class="todo"/);
+    const out = render(html, {}, null, { contactEmail: 'help@example.com', companyAddress: '1 Example Road, Testville', vatNumber: 'GB000000000' });
     assert.match(out, /<a href="mailto:help@example.com">help@example.com<\/a>/);
-    assert.doesNotMatch(out, /to confirm/);
+    assert.match(out, /Email us at <a href="mailto:help@example.com">help@example.com<\/a>/);
+    assert.match(out, /Registered office: 1 Example Road, Testville/);
+    assert.match(out, /VAT: GB000000000/);
+    assert.doesNotMatch(out, /Visit our/);
+    assert.doesNotMatch(out, /to confirm|class="todo"|data-if=|data-unless=|hidden/);
+    const escaped = render('<p data-if="company-address" hidden>Registered office: <span data-company-address></span></p>', {}, null, { companyAddress: '<b>x</b>' });
+    assert.match(escaped, /Registered office: &lt;b&gt;x&lt;\/b&gt;/);
+    assert.doesNotMatch(escaped, /<b>x<\/b>/);
+  });
+
+  it('the public HTML templates themselves have no “to confirm” placeholders', () => {
+    const dir = path.join(__dirname, '..', 'public');
+    const files = fs.readdirSync(dir).filter((f) => f.endsWith('.html') && f !== 'admin.html');
+    assert.ok(files.includes('contact.html') && files.length >= 4);
+    for (const f of files) {
+      const html = fs.readFileSync(path.join(dir, f), 'utf8');
+      assert.doesNotMatch(html, /to confirm/i, f);
+      assert.doesNotMatch(html, /class="todo"/, f);
+      assert.doesNotMatch(html, new RegExp('16870' + '472'), f);
+    }
   });
 
   it('robots.txt blocks admin, API, checkout and success, and points to the sitemap', async () => {
