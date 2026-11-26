@@ -117,9 +117,10 @@ they print as `[REGISTERED ADDRESS — to confirm]` / `[VAT STATUS / NUMBER — 
 ## Info pages, footer and placeholders
 
 - `/contact`, `/faq`, `/privacy`, `/terms` (also with `.html`), `/robots.txt` and `/sitemap.xml`.
-  Details still to confirm are shown as yellow `[… — to confirm]` placeholders in the HTML.
-- `CONTACT_EMAIL` (optional, on Render): replaces every `[CONTACT EMAIL — to confirm]` with a
-  mailto link.
+- `CONTACT_EMAIL`, `COMPANY_ADDRESS` and `VAT_NUMBER` (optional, on Render): if set, the info
+  pages show the real value (email as a mailto link). If a value is unset, that detail is
+  left out — the pages never invent an address, email, VAT number or other business detail,
+  and they do not show “to confirm” placeholders.
 - The six demo products that still only have the bundled placeholder SVG art (`tauros-ar`,
   `varoom-ar`, `revavroom-sar`, `pikachu-promo`, `charizard-ex`, `lot-bulk-commons`) are hidden
   from the shop but kept in `products.json` and the admin. Upload a real photo to one and it shows
