@@ -41,8 +41,8 @@
 
       <h1>Contact us</h1>
       <p class="lead">Questions about an order, a card or postage? We're happy to help.</p>
-      <div class="contact-card">
-        <p><strong>Email:</strong> <span class="todo" data-contact-email>[CONTACT EMAIL — to confirm]</span></p>
+      <div class="contact-card" data-if="contact-email" hidden>
+        <p><strong>Email:</strong> <span data-contact-email></span></p>
         <p>We aim to reply within 1–2 working days (Monday to Friday, not including UK bank holidays).</p>
         <p class="hint">If your message is about an order, please include your order number. You'll find it on your confirmation page and in your order details.</p>
       </div>
@@ -51,14 +51,14 @@
       <p>You can check your order at any time on the <a href="/track">Track order</a> page with your order number and the email you used at checkout. Your Royal Mail tracking number appears there once your parcel has been sent.</p>
 
       <h2>Returns and cancellations</h2>
-      <p>You can cancel most orders within 14 days of delivery. See our <a href="/terms#cancellation">Terms of Sale</a> for how it works, or email us and we'll talk you through it.</p>
+      <p>You can cancel most orders within 14 days of delivery. See our <a href="/terms">Terms of Sale</a>.</p>
 
       <h2>Common questions</h2>
       <p>Postage, payments and card condition are covered in our <a href="/faq">FAQ</a>.</p>
 
       <h2>Business details</h2>
-      <p>PO-KE-MART-FUN LIMITED, a company registered in England &amp; Wales.<br>
-      Registered office: <span class="todo">[REGISTERED ADDRESS — to confirm]</span></p>
+      <p>PO-KE-MART-FUN LIMITED, a company registered in England &amp; Wales.</p>
+      <p data-if="company-address" hidden>Registered office: <span data-company-address></span></p>
 
     </article>
   </main>

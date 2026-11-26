@@ -54,7 +54,7 @@
       </details>
       <details>
         <summary>How long will delivery take?</summary>
-        <p>Royal Mail Tracked 48 aims to deliver within 2–3 working days after we send your order. We aim to send orders within <span class="todo">[DISPATCH TIME — to confirm, e.g. 1–2 working days]</span>.</p>
+        <p>Royal Mail Tracked 48 aims to deliver within 2–3 working days after we send your order.</p>
       </details>
       <details>
         <summary>Do you post outside the UK?</summary>
@@ -94,11 +94,12 @@
       <h2>Returns</h2>
       <details>
         <summary>Can I return something?</summary>
-        <p>Yes. You can cancel your order within 14 days of delivery and return the items for a refund. If something arrives damaged, faulty or not as described, contact us and we'll put it right. Full details are in our <a href="/terms#cancellation">Terms of Sale</a>.</p>
+        <p>Yes. You can cancel your order within 14 days of delivery and return the items for a refund. If something arrives damaged, faulty or not as described, contact us and we'll put it right. See our <a href="/terms">Terms of Sale</a>.</p>
       </details>
 
       <h2>Still need help?</h2>
-      <p>Email us at <span class="todo" data-contact-email>[CONTACT EMAIL — to confirm]</span> or visit our <a href="/contact">Contact us</a> page. We aim to reply within 1–2 working days.</p>
+      <p data-unless="contact-email">Visit our <a href="/contact">Contact us</a> page. We aim to reply within 1–2 working days.</p>
+      <p data-if="contact-email" hidden>Email us at <span data-contact-email></span> or visit our <a href="/contact">Contact us</a> page. We aim to reply within 1–2 working days.</p>
 
     </article>
   </main>
