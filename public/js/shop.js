@@ -137,11 +137,12 @@ function applyFilters() {
     if (f.inStock && p.stock < 1) return false;
     return true;
   });
+  const stockLast = (a, b) => Number(a.stock < 1) - Number(b.stock < 1);
   const sorters = {
-    newest: (a, b) => (Date.parse(b.added_at || 0) || 0) - (Date.parse(a.added_at || 0) || 0) || b._i - a._i,
-    'price-asc': (a, b) => a.price_gbp - b.price_gbp,
-    'price-desc': (a, b) => b.price_gbp - a.price_gbp,
-    name: (a, b) => a.title.localeCompare(b.title, 'en-GB'),
+    newest: (a, b) => stockLast(a, b) || (Date.parse(b.added_at || 0) || 0) - (Date.parse(a.added_at || 0) || 0) || a._i - b._i,
+    'price-asc': (a, b) => stockLast(a, b) || a.price_gbp - b.price_gbp,
+    'price-desc': (a, b) => stockLast(a, b) || b.price_gbp - a.price_gbp,
+    name: (a, b) => stockLast(a, b) || a.title.localeCompare(b.title, 'en-GB'),
   };
   list = list.slice().sort(sorters[f.sort] || sorters.newest);
 
