@@ -19,12 +19,58 @@ for (const name of ['contact', 'faq', 'privacy', 'terms']) {
   PAGES['/' + name] = name + '.html';
   PAGES['/' + name + '.html'] = name + '.html';
 }
-// Customer-service email: set CONTACT_EMAIL on Render to replace the visible
-// "[CONTACT EMAIL — to confirm]" placeholders with a real mailto link.
+// Optional company details: set CONTACT_EMAIL, COMPANY_ADDRESS or VAT_NUMBER on
+// Render to fill the matching slots on Contact, FAQ, Privacy and Terms. If a
+// value is unset, the slot and its label are left out — nothing is invented.
 const EMAIL_RE = /^[^\s@<>"'()]+@[^\s@<>"'()]+\.[a-z]{2,}$/i;
-function contactEmail() {
-  const e = String(process.env.CONTACT_EMAIL || '').trim();
+function oneLine(v) {
+  return String(v == null ? '' : v).replace(/\s+/g, ' ').trim();
+}
+function contactEmail(opts = {}) {
+  const e = opts.contactEmail === undefined ? String(process.env.CONTACT_EMAIL || '').trim() : oneLine(opts.contactEmail);
   return EMAIL_RE.test(e) ? e : '';
+}
+function companyAddress(opts = {}) {
+  return oneLine(opts.companyAddress === undefined ? process.env.COMPANY_ADDRESS : opts.companyAddress);
+}
+function vatNumber(opts = {}) {
+  return oneLine(opts.vatNumber === undefined ? process.env.VAT_NUMBER : opts.vatNumber);
+}
+function fillValueMarkers(html, values) {
+  let out = html;
+  out = out.replace(/<span data-contact-email><\/span>/g,
+    values['contact-email'] ? `<a href="mailto:${esc(values['contact-email'])}">${esc(values['contact-email'])}</a>` : '');
+  out = out.replace(/<span data-company-address><\/span>/g,
+    values['company-address'] ? esc(values['company-address']) : '');
+  out = out.replace(/<span data-vat-number><\/span>/g,
+    values['vat-number'] ? esc(values['vat-number']) : '');
+  return out;
+}
+function applyOptionalBlocks(html, values) {
+  let out = html;
+  for (const [name, value] of Object.entries(values)) {
+    out = out.replace(new RegExp(`<(p|span|div)([^>]*\\sdata-if="${name}"[^>]*)>([\\s\\S]*?)</\\1>`, 'g'),
+      (_m, tag, attrs, body) => {
+        if (!value) return '';
+        const cleaned = attrs.replace(/\s*hidden\b/g, '').replace(new RegExp(`\\s*data-if="${name}"`), '');
+        return `<${tag}${cleaned}>${body}</${tag}>`;
+      });
+    out = out.replace(new RegExp(`<(p|span|div)([^>]*\\sdata-unless="${name}"[^>]*)>([\\s\\S]*?)</\\1>`, 'g'),
+      (_m, tag, attrs, body) => {
+        if (value) return '';
+        const cleaned = attrs.replace(new RegExp(`\\s*data-unless="${name}"`), '');
+        return `<${tag}${cleaned}>${body}</${tag}>`;
+      });
+  }
+  return out;
+}
+function fillOptionalDetails(html, opts = {}) {
+  const values = {
+    'contact-email': contactEmail(opts),
+    'company-address': companyAddress(opts),
+    'vat-number': vatNumber(opts),
+  };
+  return applyOptionalBlocks(fillValueMarkers(html, values), values);
 }
 const SAFE_URL = /^(https?:\/\/|\/)[^"'()\s\\<>]*$/i;
 
@@ -97,11 +143,7 @@ function render(html, s, ratio, opts = {}) {
     out = out.replace('<img class="hero-img" id="hero-img" alt="Po-ke Mart Fun banner" hidden />',
       webp ? `<picture class="hero-picture"><source type="image/webp" srcset="/images/banner.webp${gif[1] || ''}">${img}</picture>` : img);
   }
-  const email = opts.contactEmail === undefined ? contactEmail() : opts.contactEmail;
-  if (email) {
-    out = out.replace(/<span class="todo" data-contact-email>[^<]*<\/span>/g,
-      `<a href="mailto:${esc(email)}">${esc(email)}</a>`);
-  }
+  out = fillOptionalDetails(out, opts);
   if (s.show_banner_text) heroClasses.push('show-text');
   out = out.replace('<section class="hero-banner" id="hero-banner"', `<section class="${heroClasses.join(' ')}" id="hero-banner"`);
   return out;
